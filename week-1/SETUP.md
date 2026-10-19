@@ -59,7 +59,7 @@ Don't open the seeded PetClinic in your own agent on your own machine. Treat its
 ## Build the images
 
 ```bash
-cd ~/course/he-experiments/experiments/ladder
+cd ~/course/he-experiments/week-1/experiments/ladder
 docker compose build session && docker compose pull memgraph
 ```
 

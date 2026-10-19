@@ -4,6 +4,6 @@ __pycache__/
 .DS_Store
 runs-archive/
 # CodeBoarding working files: locks, its static-analysis cache and its logs
-experiments/e6-build-your-mental-model/codeboarding/*.lock
-experiments/e6-build-your-mental-model/codeboarding/static_analysis.*
-experiments/e6-build-your-mental-model/codeboarding/logs/
+week-1/experiments/e6-build-your-mental-model/codeboarding/*.lock
+week-1/experiments/e6-build-your-mental-model/codeboarding/static_analysis.*
+week-1/experiments/e6-build-your-mental-model/codeboarding/logs/
