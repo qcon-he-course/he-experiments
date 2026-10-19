@@ -1,0 +1,50 @@
+Based on my exploration of the codebase, here are the answers to your questions:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application that manages a pet clinic. It demonstrates Spring Framework best practices with CRUD operations for owners, pets, and veterinary visits.
+
+**Getting started:**
+- Clone the repository: `git clone https://github.com/spring-projects/spring-petclinic.git`
+- Run with Maven: `./mvnw spring-boot:run` or Gradle: `./gradlew bootRun`
+- Access at http://localhost:8080
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**Database:** H2 (in-memory)
+
+**What decides it:** The `database=h2` property in `/work/src/main/resources/application.properties:2`. However, you can activate Spring profiles (e.g., `--spring.profiles.active=postgres`) to use different databases configured in `application-postgres.properties` or `application-mysql.properties`.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+The code doesn't explicitly specify a TTL. The `CacheConfiguration.java` creates a "vets" cache with `@Cacheable("vets")` annotation on `VetRepository.findAll()`, but no expiration time is configured. Caffeine (the default cache provider) will cache indefinitely unless configured otherwise. 
+
+*Note:* The README mentions "every 10 minutes" but this appears to be outdated or aspirational documentation not reflected in the current code.
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**No.** The database schema enforces a UNIQUE constraint on `(owner_id, name)`. Additionally:
+- In H2: The `name` column is `VARCHAR_IGNORECASE`, making names case-insensitive
+- In PostgreSQL: The unique index uses `LOWER(name)`, also treating "Max" and "max" as identical
+
+So the attempt would fail with a unique constraint violation.
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**Depends on the database:**
+- **H2 (default):** You would see Betty Davis and Harold Davis (case-insensitive because `last_name VARCHAR_IGNORECASE`)
+- **PostgreSQL:** No results / "not found" error (case-sensitive LIKE search)
+
+The README states "Owner search is case-sensitive," which reflects PostgreSQL behavior but not H2. In PostgreSQL, you must search for "Davis" (with capital D).
+
+## 6. Trace what happens when an owner books a visit for a pet:
+
+1. **VisitController.processNewVisitForm** (POST `/owners/{ownerId}/pets/{petId}/visits/new`)
+2. **Owner.addVisit** (`line:176`) — called with petId and visit object
+3. **Owner.getPet** (`line:129`) — retrieves the Pet by ID from owner's pets list
+4. **Pet.addVisit** (`line:82`) — adds the visit to the pet's visits collection
+5. **OwnerRepository.save** (`VisitController:109`) — persists the owner
+6. **JPA persistence layer** — cascades the save:
+   - Owner → Pet (via `CascadeType.ALL`)
+   - Pet → Visit (via `CascadeType.ALL` with `@JoinColumn(name = "pet_id")`)
+7. **Database INSERT** — Hibernate generates SQL to insert the visit row with `pet_id` automatically populated

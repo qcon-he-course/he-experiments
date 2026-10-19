@@ -1,0 +1,59 @@
+I relied on the code and config throughout. The README is wrong on three of these questions, and I flag each one where it comes up.
+
+## 1. What the project is and how to start
+
+It's **Spring PetClinic**, a Spring Boot sample app for a veterinary clinic. It uses Spring MVC with Thymeleaf templates, Spring Data JPA, Bean Validation, a cache and Actuator. You can manage owners, their pets and the pets' visits, and see a list of vets. The code is in three feature packages: `owner/` (owners, pets, visits), `vet/` (vets) and `system/` (cache, welcome page, error page).
+
+To start it, you need Java 17 or newer. Run `./mvnw spring-boot:run` (or `./gradlew bootRun`) and open http://localhost:8080. You don't need to install a database first (see Q2).
+
+## 2. Database with no options: in-memory H2
+
+The README says PostgreSQL is the default. The code says otherwise:
+- `src/main/resources/application.properties` sets `database=h2`. That value picks the startup scripts `db/h2/schema.sql` and `db/h2/data.sql`.
+- That file sets no `spring.datasource.url`. H2 is on the classpath (`pom.xml`, runtime scope), so Spring Boot creates an embedded in-memory H2 database and runs those scripts on it.
+- No profile is active by default. Neither `PetClinicApplication` nor the build sets one.
+- PostgreSQL is used only if you turn on the `postgres` profile (`spring.profiles.active=postgres`). That loads `application-postgres.properties`, which sets the Postgres URL and `database=postgres`. MySQL works the same way with the `mysql` profile.
+
+## 3. How long the vet list stays cached: until the app restarts
+
+The README says the list is refreshed every 10 minutes. Nothing in the code does that.
+- `VetRepository.findAll()` and `findAll(Pageable)` are marked `@Cacheable("vets")`.
+- `CacheConfiguration` creates the `vets` cache with `new MutableConfiguration<>().setStatisticsEnabled(true)`. It sets no expiry, and a JCache cache never expires by default.
+- The only cache library on the classpath is plain Caffeine (`com.github.ben-manes.caffeine:caffeine`), not its JCache adapter. So Spring Boot probably uses its own Caffeine cache manager. No `spring.cache.caffeine.spec` is set, so that never expires either.
+- No code clears the cache (no `@CacheEvict`).
+
+Either way, the first vet list loaded stays in memory until the app restarts.
+
+## 4. Can Jean Coleman add a pet called "max"? No
+
+The README says pet names are case-sensitive. The code treats them as case-insensitive.
+- In the sample data, Jean Coleman is owner 6 and already has `Max` (`db/h2/data.sql:43`).
+- `PetController.processCreationForm` calls `owner.getPet(pet.getName(), true)`. That method compares names with `equalsIgnoreCase`, so it finds `Max` and rejects the form with "already exists".
+- The database blocks it as a second line of defence. In H2, `pets.name` is `VARCHAR_IGNORECASE` with `UNIQUE (owner_id, name)`. In Postgres, there is a unique index on `(owner_id, LOWER(name))`. If one of these fires, the controller turns the `unique_owner_pet_name` error into the same "already exists" message.
+
+## 5. Searching owners for "davis": a list of two owners
+
+The README says owner search is case-sensitive. On the default H2 database it isn't.
+- `OwnerController.processFindForm` trims the input and calls `OwnerRepository.findByLastNameStartingWith`. Spring Data turns that method name into a `LIKE 'davis%'` query.
+- In H2, `owners.last_name` is `VARCHAR_IGNORECASE`, so the query matches both **Betty Davis** and **Harold Davis**.
+- With two results, the controller fills in the paging details and shows `owners/ownersList`: one page holding the two Davis owners. With exactly one match it would go straight to that owner's page; with none it would show "not found".
+
+One caveat: the Postgres schema doesn't make `last_name` case-insensitive, so on the `postgres` profile, "davis" would likely find nothing.
+
+## 6. Booking a visit, from form to database row
+
+1. **Open the form.** On the owner page, the "Add Visit" link (`owners/ownerDetails.html`) sends `GET /owners/{ownerId}/pets/{petId}/visits/new`.
+2. **Load the data first.** Before the handler runs, Spring calls `VisitController.loadPetWithVisit` (it's a `@ModelAttribute("visit")` method):
+   - it loads the owner with `owners.findById(ownerId)`, which also loads the pets and visits;
+   - it finds the pet with `Owner.getPet(petId)`;
+   - it puts `owner` and `pet` in the model;
+   - it creates a `new Visit()` dated tomorrow and attaches it with `pet.addVisit(visit)`.
+
+   It also calls `minVisitDate()`. Then `initNewVisitForm()` returns the view `pets/createOrUpdateVisitForm`.
+3. **Submit.** The form posts to the same URL. `POST` runs `loadPetWithVisit` again, so the owner and pet are reloaded fresh.
+4. **Bind.** `VisitController.setAllowedFields` (`@InitBinder`) blocks `id` and `*.id`. Spring then copies the date and description from the form onto that new `Visit`.
+5. **Validate.** `@Valid Visit` checks the description: `@NotBlank` and `@Size(max = 255)`. Then `processNewVisitForm` rejects any date that isn't after today. If there are errors, the form is shown again.
+6. **Attach the visit.** `Owner.addVisit(petId, visit)` finds the pet and calls `Pet.addVisit`. This is the same object already added in step 2. `visits` is a `Set` and `BaseEntity` doesn't appear to override `equals`, so adding it twice changes nothing.
+7. **Save.** `this.owners.save(owner)` is Spring Data's `SimpleJpaRepository.save`, which runs in its own transaction. The owner already exists, so it does `EntityManager.merge(owner)`.
+8. **Write the row.** The save passes from owner to pets (`Owner.pets`) and from pet to visits (`Pet.visits`), both with `CascadeType.ALL`. Hibernate sees the new visit and writes it to the `visits` table (`visit_date`, `description`, `pet_id`). The `id` comes from the identity column, and `pet_id` is set because of `@JoinColumn(name = "pet_id")`. The transaction then commits.
+9. **Redirect.** The controller adds the message "Your visit has been booked" and redirects to `/owners/{ownerId}`, which shows the new visit.

@@ -1,0 +1,48 @@
+Now I have enough context to answer your questions. Here they are:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application that demonstrates a veterinary clinic management system. It showcases Spring best practices with features for managing owners, their pets, and veterinary visits.
+
+**Getting started:**
+```bash
+./mvnw spring-boot:run
+```
+Then visit `http://localhost:8080/`. (Requires Java 17+)
+
+## 2. Default database
+
+When started with no options, PetClinic uses **H2** (in-memory database). This is set in `application.properties:2`:
+```
+database=h2
+```
+
+The application also supports PostgreSQL and MySQL via Spring profiles (`spring.profiles.active=postgres` or `spring.profiles.active=mysql`).
+
+## 3. Vet list cache duration
+
+**10 minutes**. As stated in the README (line 160): "the vet list is refreshed from the database every 10 minutes". The `VetRepository.findAll()` method is annotated with `@Cacheable("vets")`, and the cache is configured in `CacheConfiguration` to use JCache.
+
+## 4. Can Jean Coleman add another pet called "max"?
+
+**Yes**. The README explicitly states: "Pet names are case-sensitive, so `Max` and `max` are two different pets." They are stored separately in the database. (Note: when looking up a pet by name programmatically, the `getPet(String name)` method uses case-insensitive comparison, but storage is case-sensitive.)
+
+## 5. Search for owners with "davis"
+
+**Nothing** — the search will return no results. The README states: "Owner search is case-sensitive: type the last name as it was entered, for example `Davis`." The `OwnerRepository.findByLastNameStartingWith()` method performs a case-sensitive database query, so "davis" won't match "Davis".
+
+## 6. Visit booking flow (form submission to database row)
+
+Here's the complete trace:
+
+| Step | Class | Method |
+|------|-------|--------|
+| 1 | `VisitController` | `processNewVisitForm()` - receives POST request with owner and visit data |
+| 2 | `Owner` | `addVisit(Integer petId, Visit visit)` - associates visit with the pet |
+| 3 | `Pet` | `addVisit(Visit visit)` - adds visit to the pet's visit collection |
+| 4 | `OwnerRepository` | `save(Owner owner)` - JpaRepository method persists the owner |
+| 5 | `Owner` | (cascade) JPA persists related pets (CascadeType.ALL on pets) |
+| 6 | `Pet` | (cascade) JPA persists related visits (CascadeType.ALL on visits) |
+| 7 | Database | Insert row into `visits` table with `pet_id` foreign key |
+
+The cascade annotations (`@OneToMany(cascade = CascadeType.ALL)`) on both the `pets` collection in `Owner` and the `visits` collection in `Pet` ensure that saving the owner automatically persists the visit to the database.

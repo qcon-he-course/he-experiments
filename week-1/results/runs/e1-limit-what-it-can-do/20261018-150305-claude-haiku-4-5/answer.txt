@@ -1,0 +1,78 @@
+Based on my analysis of the codebase, here are the answers to your questions:
+
+## 1. Project Purpose & Getting Started
+
+**Spring PetClinic** is a Spring Boot sample application demonstrating Spring best practices. It's a web-based pet clinic management system where you can manage owners, their pets, and vet visits.
+
+**To get started:**
+```bash
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+./mvnw spring-boot:run  # or ./gradlew bootRun
+```
+Then visit `http://localhost:8080/`
+
+---
+
+## 2. Default Database
+
+**H2 in-memory database** (`application.properties:2` sets `database=h2`)
+
+This is what actually runs with no options. The README claims PostgreSQL is the default (line 71), but the code configuration defaults to H2. To use PostgreSQL/MySQL instead:
+- PostgreSQL: `docker compose up postgres` + run with no special config
+- MySQL: `spring.profiles.active=mysql ./mvnw spring-boot:run`
+
+**What decides it:** The `database` property in `application.properties` and the active Spring profile.
+
+---
+
+## 3. Vet List Cache Duration
+
+**The README claims 10 minutes** (README:160), but **the actual code doesn't implement this TTL**. 
+
+`CacheConfiguration.java` creates a JCache named "vets" with `@Cacheable("vets")` decorating the repository methods, but there's no expiration time configured. The cache would persist indefinitely (or until app restart) without explicit TTL configuration in Caffeine settings.
+
+---
+
+## 4. Can Jean Coleman Add Another Pet Called "max"?
+
+**No, she cannot** (assuming default H2 database).
+
+- `Owner.java:150` uses `equalsIgnoreCase()` for pet lookup (case-insensitive at application level)
+- **H2 constraint** (`db/h2/schema.sql:48`): The `name` column is `VARCHAR_IGNORECASE(30)`, and there's a unique constraint on `(owner_id, name)` — so "Max" and "max" are treated as identical
+- **PostgreSQL** (`db/postgres/schema.sql:45`): Uses `UNIQUE (owner_id, LOWER(name))` — also case-insensitive
+- **MySQL** (`db/mysql/schema.sql:47`): Uses `UNIQUE (owner_id, name)` — case-sensitive by default, so she *could* add "max"
+
+With H2 (the default), the database would reject the insert with a unique constraint violation.
+
+---
+
+## 5. Search Owners for "davis" (lowercase)
+
+**Results depend on the database collation:**
+
+**With H2 (default):** You'd find all owners with last names starting with "davis" (case-insensitive, since H2 uses `VARCHAR_IGNORECASE` for the `last_name` column). So "Davis", "DAVIS", "davis" all match.
+
+**With PostgreSQL/MySQL:** Case-sensitive by default. Searching for lowercase "davis" would NOT match "Davis" in the database (which is the correct owner).
+
+The search uses `findByLastNameStartingWith(lastname, pageable)` in `OwnerController:145`, which delegates to the database query. If no matches found, it shows an error.
+
+---
+
+## 6. Visit Booking Flow (Form Submission to Database)
+
+Here's the complete trace:
+
+| Step | Class | Method |
+|------|-------|--------|
+| 1. User submits form | `VisitController` | `processNewVisitForm()` (line 98) |
+| 2. Visit date validation | `VisitController` | `processNewVisitForm()` (line 100) — checks date is after today |
+| 3. Description validation | `Visit` entity | Bean validation constraints (Visit class uses `@NotBlank` and `@Size(max=255)`) |
+| 4. Get pet from owner | `Owner` | `addVisit(Integer petId, Visit visit)` (line 176) calls `getPet(petId)` (line 129) |
+| 5. Add visit to pet | `Pet` | `addVisit(Visit visit)` (adds visit to pet's visit collection) |
+| 6. Persist to database | `OwnerRepository` | `save(owner)` (VisitController:109) — cascades to persist visit |
+| 7. Flash message set | `VisitController` | `processNewVisitForm()` (line 110) — "Your visit has been booked" |
+| 8. Redirect | `VisitController` | Return `"redirect:/owners/{ownerId}"` (line 111) |
+| 9. Row inserted | Database | `visits` table gets new row with `pet_id`, `visit_date`, `description` |
+
+The key architectural detail: visits are owned by pets (one-to-many), and pets are owned by owners. When you save the owner, the cascading `CascadeType.ALL` on the Pet relationship ensures the visit is persisted.

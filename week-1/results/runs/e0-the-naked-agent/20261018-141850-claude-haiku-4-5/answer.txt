@@ -1,0 +1,1 @@
+The second agent confirms the same finding - the 10-minute timeout is **documented in the README but not actually configured** in the CacheConfiguration.java code. Both searches independently found that while the README claims this feature, the actual implementation is missing the expiration policy in the Caffeine cache configuration.

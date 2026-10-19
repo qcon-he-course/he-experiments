@@ -1,0 +1,45 @@
+Now I have all the information I need to answer your questions. Here are the answers:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application demonstrating Spring development practices. It's a pet clinic management system where users can manage owners, their pets, and vet visits.
+
+**Getting started:**
+```bash
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+./mvnw spring-boot:run        # Maven
+# or
+./gradlew bootRun              # Gradle
+```
+Then visit http://localhost:8080
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2 (in-memory database)** is used by default. This is decided by the `database` property in `/work/src/main/resources/application.properties` (line 2), which is set to `database=h2`. 
+
+Note: The README recommends PostgreSQL, but the actual default configuration uses H2 for quick experimentation.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**10 minutes** (600 seconds). This is documented in the README at line 160: "the vet list is refreshed from the database every 10 minutes". The cache is created in `CacheConfiguration` with the name "vets" and the VetRepository uses `@Cacheable("vets")` annotation.
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**Yes.** Pet names are case-sensitive according to the README. Jean Coleman has a pet named "Max" (seen in the sample data), and she can add another pet called "max" as a separate entity. The README explicitly states: "Pet names are case-sensitive, so `Max` and `max` are two different pets."
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**No results.** Owner search is case-sensitive. The search uses Spring Data's `findByLastNameStartingWith()` method which performs a case-sensitive SQL `LIKE` query. There are two owners with last name "Davis" (Betty Davis and Harold Davis), but searching for "davis" (lowercase) won't match them. The README confirms: "Owner search is case-sensitive: type the last name as it was entered, for example `Davis`."
+
+## 6. Trace what happens when an owner books a visit for a pet
+
+Here's the step-by-step flow from form submission to database:
+
+1. **VisitController.processNewVisitForm()** (line 98) - Receives form POST to `/owners/{ownerId}/pets/{petId}/visits/new`
+2. **Owner.addVisit(Integer petId, Visit visit)** (Owner.java:176) - Validates and finds the pet
+3. **Owner.getPet(Integer id)** (Owner.java:129) - Retrieves the specific pet by ID
+4. **Pet.addVisit(Visit visit)** (Pet.java:81) - Adds visit to the pet's visits collection
+5. **OwnerRepository.save(owner)** (VisitController.java:109) - Saves the owner
+6. **JPA cascade persists** - Because Owner has `@OneToMany(cascade = CascadeType.ALL)` on pets (Owner.java:67) and Pet has `@OneToMany(cascade = CascadeType.ALL)` on visits (Pet.java:56), the visit is automatically persisted
+7. **Visit row inserted into `visits` table** - The visit entity is written to the database with the pet_id foreign key and visit details (date, description)

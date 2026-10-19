@@ -1,0 +1,46 @@
+Now I have enough information to answer your questions. Here's what I found:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application that demonstrates best practices for building a veterinary clinic management system. It manages owners, their pets, and vet visits.
+
+To get started:
+```bash
+./mvnw spring-boot:run
+```
+Then visit http://localhost:8080/
+
+## 2. Default database when starting with no options
+
+**H2** (in-memory database) is the default. This is configured in `/work/src/main/resources/application.properties` line 2:
+```properties
+database=h2
+```
+
+H2 is chosen because it requires no external setup—the schema and sample data are applied automatically on first run.
+
+## 3. Vet list cache duration
+
+**10 minutes**. According to the README, the vet list is refreshed from the database every 10 minutes. The `VetRepository.findAll()` uses `@Cacheable("vets")` annotation and the cache is configured in `CacheConfiguration:37`, though the specific TTL of 10 minutes is stated in the documentation.
+
+## 4. Can Jean Coleman add another pet called "max"?
+
+**Yes**. Jean Coleman already has a pet called "Max" (capital M, visible in `data.sql` line 43). But pet names are **case-sensitive** (stated in README line 66), so "max" (lowercase) is a different pet and can be added as a separate entry.
+
+## 5. Search owners for "davis" (all lowercase)
+
+You'll see **both Betty Davis and Harold Davis** in the results. Although the README states "Owner search is case-sensitive," the H2 database (the default) performs case-insensitive LIKE queries. The query in `OwnerController:145` calls `findByLastNameStartingWith("davis", pageable)`, which executes a LIKE query that will match both "Davis" entries.
+
+## 6. Visit booking flow (form submission to database row)
+
+Here's the complete step-by-step trace:
+
+1. **Form submission** → `POST /owners/{ownerId}/pets/{petId}/visits/new`
+2. **VisitController.processNewVisitForm()** (line 98) receives the form data
+3. **owner.addVisit(petId, visit)** (line 108 in VisitController) 
+4. **Owner.addVisit()** (line 176 in Owner.java) retrieves the pet by ID and calls:
+5. **Pet.addVisit(visit)** (line 81 in Pet.java) adds visit to the Set<Visit>
+6. **this.owners.save(owner)** (line 109 in VisitController)
+7. **OwnerRepository.save()** (inherited from JpaRepository, line 36 in OwnerRepository.java)
+8. **JPA/Hibernate persistence** triggered by CascadeType.ALL on the pets relationship (Owner.java line 67)
+9. **INSERT into visits table** executed by the database (the Visit entity is persisted with foreign key to pet_id)

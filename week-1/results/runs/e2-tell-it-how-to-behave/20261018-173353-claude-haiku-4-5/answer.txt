@@ -1,0 +1,38 @@
+Based on my exploration of the codebase, here are the answers to your questions:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application demonstrating Spring and Spring Data best practices. It's a veterinary clinic management system where you can manage owners, pets, and visit bookings.
+
+**Getting started:**
+```bash
+./mvnw spring-boot:run    # Maven
+# or
+./gradlew bootRun         # Gradle
+```
+Then visit `http://localhost:8080/`.
+
+## 2. Which database does it use with no options, and what decides that?
+
+**H2** (in-memory database). The code decides: `application.properties:2` sets `database=h2`. The README states PostgreSQL is default, but the code contradicts this—**the code decides**, and H2 is the actual default.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**Not configured in the code.** `CacheConfiguration.java:36-37` creates a "vets" cache with statistics enabled, but **no TTL is specified**. The Caffeine cache library default is no expiration. The README claims 10 minutes, but that's not reflected in the code.
+
+## 4. Can Jean Coleman add another pet called "max"?
+
+**No.** The README says "Pet names are case-sensitive," but the code contradicts it. In `Owner.java:150`, the pet name lookup uses `compName.equalsIgnoreCase(name)`, making names **case-insensitive**. When creating a new pet, `PetController.java:111` calls `owner.getPet(pet.getName(), true)` which treats "Max" and "max" as the same, so it rejects "max" as a duplicate.
+
+## 5. You search owners for "davis" (lowercase). What do you see?
+
+**You find the Davis owners.** The search uses `OwnerRepository.findByLastNameStartingWith()` (OwnerController.java:145), which generates a SQL `LIKE` query. Like most databases, the default is case-insensitive, so "davis" matches "Davis". You'll see Betty Davis and Harold Davis.
+
+## 6. Visit booking trace (form submission to database row)
+
+1. **`VisitController.processNewVisitForm()`** (line 98) receives the POST from `/owners/{ownerId}/pets/{petId}/visits/new`
+2. **`Visit` object** bound with validation (@Valid decorator)
+3. **`owner.addVisit(petId, visit)`** (Owner.java:176) locates the pet and adds the visit
+4. **`owners.save(owner)`** (VisitController.java:109) persists via `OwnerRepository`
+5. **`Owner` entity** cascades to `Pet`, then to `Visit` (Pet.java:56 has `@OneToMany(cascade = CascadeType.ALL)`)
+6. **Database row inserted** into `visits` table with `visit_date`, `description`, and `pet_id`

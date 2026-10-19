@@ -1,0 +1,33 @@
+Based on my analysis of the Spring PetClinic codebase, here are the answers to your questions:
+
+## 1. Project Overview
+**Spring PetClinic** is a sample Spring Boot application that manages a veterinary clinic. It allows managing:
+- Owners and their information
+- Pets and their owners
+- Veterinarians and their specialties
+- Visit/appointment bookings
+
+**Getting started:** Clone the repo and run `./mvnw spring-boot:run` (Maven) or `./gradlew bootRun` (Gradle), then access http://localhost:8080/
+
+## 2. Default Database
+When started with no options, it uses **H2 (in-memory database)**. This is configured in `/work/src/main/resources/application.properties:2` where `database=h2` is set. Other profiles (postgres/mysql) are available via separate property files.
+
+## 3. Vet List Cache Duration
+The cache is configured in `CacheConfiguration.java:37` to create a "vets" cache with statistics enabled. **There is no explicit TTL configured in the code.** The README claims 10 minutes, but this is not actually implemented in the current codebase. With Caffeine as the backend, without explicit configuration, the cache would persist indefinitely.
+
+## 4. Duplicate Pet Names (Max vs max)
+**No, Jean Coleman cannot add another pet called "max".** This is despite the README stating pet names are case-sensitive. The database schema (`/work/src/main/resources/db/h2/schema.sql:48, 55`) uses `VARCHAR_IGNORECASE(30)` for pet names and has a `UNIQUE (owner_id, name)` constraint. So the database treats "Max" and "max" as identical.
+
+## 5. Searching for "davis"
+When searching for "davis" (lowercase), you'll see **both Betty Davis and Harold Davis** (from the sample data at lines 26 and 28). The search uses `OwnerRepository.findByLastNameStartingWith()` which performs a case-insensitive LIKE query against the `VARCHAR_IGNORECASE` column.
+
+## 6. Visit Booking Trace
+When submitting a visit booking form to `/owners/{ownerId}/pets/{petId}/visits/new`:
+
+1. **VisitController.loadPetWithVisit()** (line 64) - @ModelAttribute method fetches Owner and Pet from DB, creates new Visit
+2. **VisitController.processNewVisitForm()** (line 98) - validates visit date
+3. **Owner.addVisit()** (line 176) - calls getPet(petId) then pet.addVisit(visit)
+4. **Pet.addVisit()** (line 81) - adds visit to pet's visits collection
+5. **VisitController.processNewVisitForm()** (line 109) - calls owners.save(owner)
+6. **OwnerRepository.save()** - persists Owner entity via Spring Data JPA
+7. **Hibernate JPA** - cascades through @OneToMany(cascade=CascadeType.ALL) relationships and inserts Visit row into the visits table with the pet_id foreign key set

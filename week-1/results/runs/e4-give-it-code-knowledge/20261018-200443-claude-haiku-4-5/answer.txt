@@ -1,0 +1,82 @@
+Perfect! I now have all the information needed to answer your questions. Let me provide comprehensive answers:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a Spring Boot sample application that demonstrates key Spring Framework features (Spring MVC, Spring Data JPA, caching, validation). It's a web application for managing a veterinary clinic—owners can register, manage their pets, and book veterinary visits.
+
+**Getting started:**
+- Clone the repo: `git clone https://github.com/spring-projects/spring-petclinic.git`
+- Run with Maven: `./mvnw spring-boot:run`
+- Or with Gradle: `./gradlew bootRun`
+- Visit: http://localhost:8080/
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2 (in-memory database)** is the default. 
+
+**What decides it:** The `/work/src/main/resources/application.properties` file (line 2) sets `database=h2`. This property is then used in the schema and data location paths (lines 3-4):
+```properties
+database=h2
+spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql
+spring.sql.init.data-locations=classpath*:db/${database}/data.sql
+```
+
+*Note:* The README states "In its default configuration, Petclinic uses PostgreSQL," but this contradicts the actual configuration. The code shows H2 is the default. PostgreSQL/MySQL require activating the `postgres` or `mysql` profile.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+Based on the code I found, **there is no explicit TTL configured**. The README claims "the vet list is refreshed from the database every 10 minutes," but this is **not enforced in the current code**:
+
+- `CacheConfiguration.java` creates a "vets" cache but does not set `expireAfterWrite` or any TTL
+- No Caffeine configuration specifies cache expiration
+- By default, without explicit configuration, cached items remain indefinitely (no automatic expiration)
+
+**The documentation appears outdated.** The cache will keep the vet list until either the application restarts or the cache is manually evicted.
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**No, she cannot.** Both database schemas enforce **case-insensitive uniqueness** for pet names:
+
+- **H2 schema** (line 48): `name VARCHAR_IGNORECASE(30)` with constraint (line 55): `UNIQUE (owner_id, name)`
+- **PostgreSQL schema** (line 45): `CREATE UNIQUE INDEX unique_owner_pet_name ON pets (owner_id, LOWER(name))`
+
+Additionally, the application layer validates this in `PetController.processCreationForm()` (line 111) using `owner.getPet(pet.getName(), true)`, which calls `Owner.getPet()` (line 150) using `equalsIgnoreCase()` comparison.
+
+The sample data confirms Jean Coleman (owner_id 6) already has a pet named "Max" (line 43 in data.sql).
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**You will see both Davis owners:**
+- Betty Davis
+- Harold Davis
+
+**Why:** The search uses `OwnerRepository.findByLastNameStartingWith(lastname, pageable)` (OwnerController:145), which is **case-insensitive** because:
+- In H2: `last_name VARCHAR_IGNORECASE(30)` (schema.sql:39)
+- In PostgreSQL: The `startingWith` query operates case-insensitively by default on TEXT columns in PostgreSQL's Spring Data JPA implementation
+
+Even though the README claims search is "case-sensitive," the actual implementation is case-insensitive.
+
+## 6. Trace what happens when an owner books a visit for a pet
+
+**Step-by-step flow:**
+
+| Step | Component | Method | Action |
+|------|-----------|--------|--------|
+| 1 | Browser | GET | Request: `/owners/{ownerId}/pets/{petId}/visits/new` |
+| 2 | `VisitController` | `loadPetWithVisit()` (ModelAttribute) | Loads owner & pet from DB, creates new `Visit` object, adds visit to pet's collection |
+| 3 | Thymeleaf | `createOrUpdateVisitForm.html` | Renders form with date picker and description field |
+| 4 | Browser | POST | Submit: `/owners/{ownerId}/pets/{petId}/visits/new` with form data |
+| 5 | `VisitController` | `processNewVisitForm()` | Validates visit date is after today |
+| 6 | `Owner` | `addVisit(petId, visit)` | Retrieves pet by ID, calls `pet.addVisit(visit)` |
+| 7 | `Pet` | `addVisit(visit)` | Adds visit to pet's visits collection |
+| 8 | `OwnerRepository` | `save(owner)` | JPA cascades save to all pets and visits |
+| 9 | Hibernate | Flush | Executes SQL: `INSERT INTO visits (pet_id, visit_date, description, id) VALUES (?, ?, ?, ?)` |
+| 10 | Database | Commit | Row inserted into `visits` table with foreign key to `pets` |
+| 11 | Controller | Return | Redirect to `/owners/{ownerId}` with success message |
+
+**Key files involved:**
+- `VisitController` (lines 97-112)
+- `Visit` entity with `@Entity` and validation annotations
+- `Pet` entity with `@OneToMany` cascade mapping to visits
+- `Owner.addVisit()` method (lines 176-186)
+- `OwnerRepository.save()` (inherited from JpaRepository)

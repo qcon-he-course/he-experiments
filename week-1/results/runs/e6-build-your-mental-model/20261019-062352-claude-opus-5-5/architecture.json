@@ -1,0 +1,278 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Spring PetClinic Architecture",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Browser",
+      "sublabel": "HTML forms",
+      "pos": [
+        40,
+        282
+      ],
+      "size": [
+        130,
+        60
+      ]
+    },
+    {
+      "id": "system",
+      "type": "backend",
+      "label": "System Infrastructure",
+      "sublabel": "Welcome, Crash, i18n",
+      "pos": [
+        280,
+        100
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "owner-web",
+      "type": "backend",
+      "label": "Owner & Pet Web",
+      "sublabel": "OwnerController, PetController",
+      "pos": [
+        280,
+        280
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "visit-web",
+      "type": "backend",
+      "label": "Visit Scheduling",
+      "sublabel": "VisitController",
+      "pos": [
+        280,
+        460
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "vet",
+      "type": "backend",
+      "label": "Veterinarian Mgmt",
+      "sublabel": "VetController, VetRepository",
+      "pos": [
+        280,
+        660
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "pettype",
+      "type": "backend",
+      "label": "Pet Type Lookup",
+      "sublabel": "PetTypeFormatter + repo",
+      "pos": [
+        560,
+        100
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "owner-repo",
+      "type": "backend",
+      "label": "OwnerRepository",
+      "sublabel": "JpaRepository<Owner>",
+      "pos": [
+        560,
+        370
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "tag": "only write path"
+    },
+    {
+      "id": "cache",
+      "type": "database",
+      "label": "vets cache",
+      "sublabel": "Caffeine, unbounded",
+      "pos": [
+        560,
+        660
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "owner-agg",
+      "type": "backend",
+      "label": "Owner Aggregate",
+      "sublabel": "Owner → Pet → Visit",
+      "pos": [
+        840,
+        230
+      ],
+      "size": [
+        170,
+        64
+      ]
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Relational DB",
+      "sublabel": "H2 default · MySQL · Postgres",
+      "pos": [
+        840,
+        500
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "base",
+      "type": "backend",
+      "label": "Base Domain Model",
+      "sublabel": "BaseEntity, NamedEntity, Person",
+      "pos": [
+        1110,
+        230
+      ],
+      "size": [
+        190,
+        64
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "http-owners",
+      "from": "browser",
+      "to": "owner-web",
+      "label": "/owners/**",
+      "variant": "emphasis"
+    },
+    {
+      "id": "http-visits",
+      "from": "browser",
+      "to": "visit-web",
+      "label": "…/visits/new",
+      "labelDx": -16
+    },
+    {
+      "id": "http-vets",
+      "from": "browser",
+      "to": "vet",
+      "label": "/vets.html",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "http-system",
+      "from": "browser",
+      "to": "system",
+      "label": "/, /oups, ?lang",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "owner-load-save",
+      "from": "owner-web",
+      "to": "owner-repo",
+      "label": "findById / save",
+      "variant": "emphasis"
+    },
+    {
+      "id": "visit-load-save",
+      "from": "visit-web",
+      "to": "owner-repo",
+      "label": "findById / save"
+    },
+    {
+      "id": "pet-types",
+      "from": "owner-web",
+      "to": "pettype",
+      "label": "findPetTypes"
+    },
+    {
+      "id": "repo-aggregate",
+      "from": "owner-repo",
+      "to": "owner-agg",
+      "label": "persists Owner"
+    },
+    {
+      "id": "repo-sql",
+      "from": "owner-repo",
+      "to": "db",
+      "label": "JPA, cascade ALL",
+      "variant": "emphasis"
+    },
+    {
+      "id": "vet-cache",
+      "from": "vet",
+      "to": "cache",
+      "label": "@Cacheable"
+    },
+    {
+      "id": "vet-sql",
+      "from": "vet",
+      "to": "db",
+      "label": "JPA read",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    },
+    {
+      "id": "agg-extends",
+      "from": "owner-agg",
+      "to": "base",
+      "label": "extends"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One write path",
+      "items": [
+        "No Pet or Visit repository",
+        "Controllers load Owner, mutate, save",
+        "JPA cascades pets and visits"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Data",
+      "items": [
+        "H2 in memory unless mysql/postgres profile",
+        "Schema + data from db/${database}/"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Not drawn",
+      "items": [
+        "Bootstrap (PetClinicApplication)",
+        "CacheConfiguration: never applied",
+        "Vet → Base Model extends"
+      ]
+    }
+  ]
+}

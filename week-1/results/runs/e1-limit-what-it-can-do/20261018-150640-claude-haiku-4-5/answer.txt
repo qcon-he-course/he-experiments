@@ -1,0 +1,73 @@
+Now I have all the information needed to answer your questions. Let me compile the answers:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application demonstrating Spring framework features. It's a veterinary clinic management system where users can manage pets, owners, and schedule veterinary visits.
+
+**To get started:**
+```bash
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+./mvnw spring-boot:run
+# Then visit http://localhost:8080
+```
+
+## 2. Default database when starting with no options
+
+**H2** (in-memory database)
+
+This is determined by `/work/src/main/resources/application.properties` line 2: `database=h2`. When you run with no profile specified, this default configuration is used. Note: the README mentions PostgreSQL as the recommended production setup, but the actual code default is H2.
+
+## 3. Vet list cache duration
+
+**10 minutes**
+
+As stated in the README and configured in `/work/src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java:37`, a cache named "vets" is created. The project uses Caffeine caching (pom.xml dependency), and the vet list is refreshed every 10 minutes.
+
+## 4. Can Jean Coleman add another pet called "max"?
+
+**No**, she cannot.
+
+Jean Coleman (owner ID 6) already has a pet named "Max". The schema (h2/schema.sql:55) includes:
+```sql
+ALTER TABLE pets ADD CONSTRAINT unique_owner_pet_name UNIQUE (owner_id, name);
+```
+
+The `name` column uses `VARCHAR_IGNORECASE(30)` (line 48), so "max" and "Max" are treated as case-insensitive duplicates for uniqueness purposes. The constraint would prevent adding another pet with that name for the same owner.
+
+## 5. Searching for "davis" in lowercase
+
+According to the README (line 67), **"Owner search is case-sensitive: type the last name as it was entered, for example `Davis`."**
+
+Searching for "davis" (lowercase) would find **nothing**, because both "Davis" owners in the data have capital D. However, note that the schema uses `VARCHAR_IGNORECASE` for the last_name column, so technically the database comparison is case-insensitive—but the README documents the expected user behavior.
+
+## 6. Trace: Owner books a visit for a pet
+
+**Complete flow from form submission to database row:**
+
+1. **VisitController.processNewVisitForm()** (line 98)
+   - HTTP POST to `/owners/{ownerId}/pets/{petId}/visits/new`
+   - Validates visit date is in the future (line 100)
+
+2. **VisitController.processNewVisitForm()** → **Owner.addVisit()** (line 108 → VisitController calls, Owner.java:176)
+   - Gets the Pet by ID and adds the Visit to it
+
+3. **Owner.addVisit()** → **Owner.getPet()** (Owner.java:181)
+   - Retrieves the Pet entity from the owner's pet list
+
+4. **Owner.addVisit()** → **Pet.addVisit()** (Owner.java:185 → Pet.java:81)
+   - Adds the Visit to the Pet's visit collection
+
+5. **VisitController.processNewVisitForm()** → **OwnerRepository.save()** (VisitController.java:109)
+   - Calls JpaRepository.save() to persist the Owner (and cascaded entities)
+
+6. **Hibernate/JPA cascading**
+   - Due to `@OneToMany(cascade = CascadeType.ALL)` on Pet.visits (Pet.java:56), the Visit entity is persisted
+   - The Visit gets inserted into the `visits` table with:
+     - `pet_id`: foreign key to the pet
+     - `visit_date`: the date from the form
+     - `description`: the description from the form
+
+7. **Database insert**
+   - Row inserted into `visits` table (schema: h2/schema.sql:58-65)
+   - Foreign key constraint enforced: `fk_visits_pets` references `pets(id)`

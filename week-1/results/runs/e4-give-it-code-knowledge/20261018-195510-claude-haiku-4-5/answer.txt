@@ -1,0 +1,67 @@
+Perfect! Now I have all the information I need. Let me compile the answers to your questions:
+
+## Answers
+
+### 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a Spring Boot sample application that demonstrates a complete veterinary clinic management system. It showcases modern Spring technologies including Spring MVC, Spring Data JPA, Thymeleaf templating, caching with Caffeine, form validation, and internationalization (10+ languages).
+
+**To get started:**
+```bash
+./mvnw spring-boot:run        # Maven
+# or
+./gradlew bootRun             # Gradle
+```
+Then access it at `http://localhost:8080/`
+
+### 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2** (in-memory database). This is set in `/work/src/main/resources/application.properties` at line 2: `database=h2`. This property controls which SQL initialization scripts are loaded: `classpath*:db/${database}/{schema,data}.sql`. So `h2` loads `/db/h2/schema.sql` and `/db/h2/data.sql`.
+
+The README mentions PostgreSQL as default, but the code takes precedence—it's actually H2.
+
+### 3. How long does PetClinic keep the vet list in its cache?
+
+**Indefinitely** (no expiration configured). The VetRepository methods are marked with `@Cacheable("vets")`, and the cache is initialized in CacheConfiguration.java with only `setStatisticsEnabled(true)`. There is no TTL, expireAfterWrite, expireAfterAccess, or `spring.cache.caffeine.spec` property configured. Caffeine caches indefinitely by default when no expiration policy is specified.
+
+### 4. Can Jean Coleman add another pet called "max" when she already has one called "Max"?
+
+**No.** Looking at the schema (`/work/src/main/resources/db/h2/schema.sql` line 55), there's a UNIQUE constraint: `UNIQUE (owner_id, name)` on a `VARCHAR_IGNORECASE(30)` column. Jean Coleman (owner_id 6) already has pet "Max" (pet_id 8, line 43 of data.sql). Since the column is `VARCHAR_IGNORECASE`, "max" and "Max" are treated as identical, and the database will reject the insertion. The README incorrectly states pet names are case-sensitive, but the code shows they're case-insensitive.
+
+### 5. You search owners for "davis", all lower case. What do you see?
+
+**Both Betty Davis and Harold Davis** appear in results. The owner `last_name` column is defined as `VARCHAR_IGNORECASE(30)` (schema.sql line 39), so the search `findByLastNameStartingWith("davis")` will match both "Davis" entries case-insensitively. Again, the README falsely claims owner search is case-sensitive, but the database column type contradicts this.
+
+### 6. Trace what happens when an owner books a visit for a pet (from form submission to database row)
+
+Here's the complete flow:
+
+1. **VisitController.processNewVisitForm()** (line 98-112)
+   - POST request to `/owners/{ownerId}/pets/{petId}/visits/new`
+   - Receives form data: visit date, description
+
+2. **Date validation** (line 100)
+   - Check that visit date is in the future
+   - Reject if visit date is today or earlier
+
+3. **Binding validation** (line 104)
+   - Spring validates `@Valid Visit` against constraints (@NotBlank, @Size on description)
+
+4. **Owner.addVisit(petId, visit)** (Owner.java line 176-186)
+   - Gets the Pet object by ID
+   - Calls `pet.addVisit(visit)`
+
+5. **Pet.addVisit(visit)** (Pet.java line 81-83)
+   - Adds the Visit to the Pet's visits set
+
+6. **owners.save(owner)** (VisitController.java line 109)
+   - Triggers JPA cascade: saves the modified Owner entity
+   - Because Owner has `@OneToMany(cascade = CascadeType.ALL)` on pets (Owner.java line 67)
+   - And Pet has `@OneToMany(cascade = CascadeType.ALL)` on visits (Pet.java line 56)
+   - The Visit is automatically persisted
+
+7. **Database insert**
+   - INSERT statement adds a new row to the `visits` table with:
+     - `pet_id` (foreign key to pet)
+     - `visit_date` (from form)
+     - `description` (from form)

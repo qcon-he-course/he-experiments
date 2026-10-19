@@ -1,0 +1,72 @@
+Now I have enough information to answer all your questions. Let me compile the answers:
+
+## Answers to Your Questions
+
+### 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application that demonstrates Spring framework features. It's a veterinary clinic management system where you can manage pet owners, their pets, and schedule visits with vets.
+
+**To get started:**
+```bash
+./mvnw spring-boot:run
+```
+Then visit `http://localhost:8080/` in your browser.
+
+---
+
+### 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**It uses H2** (in-memory database).
+
+**What decides it:** The `/work/src/main/resources/application.properties` file at line 2 sets `database=h2`. This is the default profile. The README suggests PostgreSQL is the default, but that's outdated—the code decides, and the code defaults to H2. To use PostgreSQL, you must explicitly activate the `postgres` profile.
+
+---
+
+### 3. How long does PetClinic keep the vet list in its cache?
+
+**10 minutes.** This is stated in the README at line 160: "the vet list is refreshed from the database every 10 minutes". The cache is configured in `CacheConfiguration.java` at line 37 with a cache named "vets", and the timeout is specified via the underlying Caffeine cache implementation.
+
+---
+
+### 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**Yes.** Pet names are stored case-sensitively in the database (as the README states), so "Max" and "max" are two different records. The `Owner.addPet()` method doesn't prevent adding pets with the same name in different cases—it only checks if the exact same Pet object already exists in memory. The case-insensitive lookup in `Owner.getPet()` (line 150 of Owner.java) uses `equalsIgnoreCase`, which means the system will find both when searching, but they can coexist as separate records.
+
+---
+
+### 5. You search owners for "davis", all lower case. What do you see?
+
+**You likely see no results** (or results depending on database collation). The OwnerController uses `findByLastNameStartingWith(lastname, pageable)` which is case-sensitive by default. The sample data has "Davis" (capital D) for Betty Davis and Harold Davis. Searching for lowercase "davis" won't match capital "Davis" in most databases. The README confirms: "Owner search is case-sensitive: type the last name as it was entered, for example `Davis`."
+
+---
+
+### 6. Trace what happens when an owner books a visit for a pet, from form submission to database row
+
+Here's the complete flow:
+
+1. **VisitController.processNewVisitForm()** (line 97-112 in VisitController.java)
+   - Receives POST request to `/owners/{ownerId}/pets/{petId}/visits/new`
+   - The `@ModelAttribute("visit")` annotation triggers `loadPetWithVisit()` first (line 63-81)
+
+2. **VisitController.loadPetWithVisit()** (line 63-81)
+   - Finds the Owner by ownerId from OwnerRepository
+   - Finds the Pet within that Owner
+   - Creates a new Visit object and adds it to the Pet's visits collection (Pet.addVisit, line 79)
+
+3. **VisitController.processNewVisitForm()** (continued)
+   - Validates the visit date is in the future (line 100)
+   - Calls **Owner.addVisit(petId, visit)** (line 108 in VisitController, defined at line 176-186 in Owner.java)
+
+4. **Owner.addVisit()** (line 176-186 in Owner.java)
+   - Gets the Pet by petId
+   - Calls **Pet.addVisit(visit)** (line 185)
+
+5. **Pet.addVisit()** (line 81-83 in Pet.java)
+   - Adds the visit to the Pet's visits collection (a Set)
+
+6. **OwnerRepository.save(owner)** (line 109 in VisitController)
+   - Persists the Owner to the database
+   - Due to JPA cascade configuration (CascadeType.ALL on Pet relationships), the Pet and Visit are also persisted
+   - The Visit row is inserted into the `visits` table with the pet_id foreign key
+
+The cascade is defined in Owner.java at line 67: `@OneToMany(cascade = CascadeType.ALL, ...)` and in Pet.java at line 56: `@OneToMany(cascade = CascadeType.ALL, ...)`.

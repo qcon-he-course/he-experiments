@@ -1,0 +1,94 @@
+Perfect! Now I have enough information to answer all your questions. Let me provide a comprehensive summary:
+
+## Answers
+
+### 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application that demonstrates how to build a web application for managing a veterinary clinic. It allows managing owners, pets, and visit bookings.
+
+**Getting started:**
+```bash
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+./mvnw spring-boot:run        # or ./gradlew bootRun
+```
+Then visit http://localhost:8080/
+
+---
+
+### 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2 (in-memory database)**, as specified in `/work/src/main/resources/application.properties`:
+```properties
+database=h2
+spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql
+```
+
+**However**, the README says "default is PostgreSQL" because you typically need to start PostgreSQL separately with Docker before the app runs. The `database` property variable controls which schema/data files are loaded. You can activate other profiles:
+- `spring.profiles.active=postgres` → uses PostgreSQL
+- `spring.profiles.active=mysql` → uses MySQL
+
+---
+
+### 3. How long does PetClinic keep the vet list in its cache?
+
+The README states **10 minutes**, but **I cannot find this configuration in the code**. The `CacheConfiguration.java` (line 49-51) creates a "vets" cache using JCache with only statistics enabled—no TTL is set. This claim in the README appears to be outdated. The @Cacheable annotation on VetRepository methods enables caching, but no expiration is explicitly configured in the code.
+
+---
+
+### 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**NO.** Pet names are case-**insensitive** in both databases:
+- **H2**: Uses `VARCHAR_IGNORECASE(30)` for pet names (schema.sql:48)
+- **PostgreSQL**: Uses `UNIQUE INDEX ... ON pets (owner_id, LOWER(name))` (schema.sql:45)
+
+The database schema enforces `UNIQUE (owner_id, name)`, so "Max" and "max" are treated as identical. Since Jean already has "Max", she cannot add "max".
+
+---
+
+### 5. You search owners for "davis", all lower case. What do you see?
+
+**It depends on the database:**
+- **H2** (default): Finds **both Betty Davis and Harold Davis** (case-insensitive: `VARCHAR_IGNORECASE` on last_name)
+- **PostgreSQL**: Finds **no results** (TEXT fields are case-sensitive; the data has "Davis" with capital D)
+
+The query uses `findByLastNameStartingWith(lastname, pageable)` which respects the database's collation.
+
+---
+
+### 6. Trace what happens when an owner books a visit
+
+Here's the complete flow from form submission to database:
+
+1. **HTTP GET** `/owners/{ownerId}/pets/{petId}/visits/new`
+   - `VisitController.initNewVisitForm()` (line 91)
+   - Returns `pets/createOrUpdateVisitForm` template
+
+2. **Form renders** with a Visit object (bound via `@ModelAttribute("visit")`)
+   - `@ModelAttribute` calls `loadPetWithVisit()` (lines 63-81) which:
+     - Fetches Owner by ID from `OwnerRepository.findById(ownerId)` 
+     - Gets Pet from Owner using `owner.getPet(petId)` (Owner.java:129-139)
+     - Creates new Visit and adds it to Pet: `pet.addVisit(visit)` (Pet.java:81-83)
+
+3. **HTTP POST** `/owners/{ownerId}/pets/{petId}/visits/new` with form data
+   - `VisitController.processNewVisitForm()` (lines 98-112)
+   - Validates visit date is not in past (lines 100-102)
+   - Calls `owner.addVisit(petId, visit)` (Owner.java:176-186) which:
+     - Gets Pet by ID: `pet = getPet(petId)` (Owner.java:129-139)
+     - Adds visit to Pet: `pet.addVisit(visit)` (Pet.java:81-83)
+
+4. **Save to database**
+   - `owners.save(owner)` (VisitController.java:109)
+   - JpaRepository performs SQL INSERT into `visits` table:
+     - Because `Pet` has `@OneToMany(cascade=CascadeType.ALL)` on visits field
+     - When Owner is saved, all its Pets are saved
+     - When Pet is saved, all its Visits are saved
+
+5. **Database row created** in `visits` table with columns: id (auto-generated), pet_id, visit_date, description
+
+**Summary of classes and methods involved (in order):**
+- `VisitController.initNewVisitForm()` → `VisitController.loadPetWithVisit()`
+- `OwnerRepository.findById()` → `Owner.getPet(Integer id)`
+- `Pet.addVisit(Visit)` → `VisitController.processNewVisitForm()`
+- `Owner.addVisit(Integer petId, Visit)` → `OwnerRepository.save(Owner)`
+- JPA cascade saves Visit → SQL INSERT into visits table

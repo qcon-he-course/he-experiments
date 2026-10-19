@@ -1,0 +1,384 @@
+{
+  "label": "model-marked",
+  "run": "e2-tell-it-how-to-behave/runs/20261018-173939-claude-opus-5-5",
+  "marked_at": "2026-10-19T13:02:02+00:00",
+  "judge": {
+    "requested": "claude-fable-5-1",
+    "model": "claude-fable-5-1",
+    "effort": "high",
+    "usage": [
+      {
+        "input_tokens": 3903,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 85796,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5486,
+        "output_tokens_details": {
+          "thinking_tokens": 3345
+        },
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "speed": "standard"
+      }
+    ],
+    "passes": 1,
+    "cache": [
+      {
+        "written": 0,
+        "read": 85796,
+        "uncached": 3903
+      }
+    ]
+  },
+  "rubric_sha256": "017e1a0a65162a0e50fea8d4db61ce6b53a6b959a54cad2bc9c811e519fe9dcd",
+  "keys": "reference/grading-keys.json",
+  "clone": {
+    "path": "~/.cache/qcon-he/e6-key",
+    "commit": "b107a866c339e7473b17359d57eb643a7cd39442",
+    "warning": null
+  },
+  "code": {
+    "files": 73,
+    "sha256": "aa677e5db25b44ea38ba8b5ab924bff650ca5f77c37858b01668c0625d7f05a5"
+  },
+  "answer_from": "transcript, every reply",
+  "facts": {
+    "files_read": [
+      "README.md",
+      "src/main/resources/application.properties",
+      "pom.xml",
+      "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/PetController.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/OwnerRepository.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/Owner.java",
+      "src/main/java/org/springframework/samples/petclinic/PetClinicApplication.java",
+      "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java",
+      "src/main/resources/db/h2/schema.sql",
+      "src/main/resources/db/h2/data.sql",
+      "src/main/java/org/springframework/samples/petclinic/owner/Visit.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/Pet.java",
+      "src/main/resources/application-postgres.properties",
+      "src/main/resources/application-mysql.properties",
+      "CONTRIBUTING.md",
+      "src/main/resources/application.yml",
+      "src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java",
+      "src/main/java/org/springframework/samples/petclinic/model/BaseEntity.java",
+      "src/main/resources/db/postgres/schema.sql",
+      "src/main/java/org/springframework/samples/petclinic/model/Person.java",
+      "src/main/resources/templates/pets/createOrUpdateVisitForm.html"
+    ],
+    "files_mcp": [],
+    "search_hits": {},
+    "readme_opened": true,
+    "citations": [
+      {
+        "cited": "pom.xml",
+        "resolved": "pom.xml",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "data.sql",
+        "resolved": null,
+        "candidates": [
+          "src/main/resources/db/h2/data.sql",
+          "src/main/resources/db/mysql/data.sql",
+          "src/main/resources/db/postgres/data.sql"
+        ],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "CONTRIBUTING.md",
+        "resolved": "CONTRIBUTING.md",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "application.properties",
+        "resolved": "src/main/resources/application.properties",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "db/h2/schema.sql",
+        "resolved": "src/main/resources/db/h2/schema.sql",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "db/h2/data.sql",
+        "resolved": "src/main/resources/db/h2/data.sql",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "application-postgres.properties",
+        "resolved": "src/main/resources/application-postgres.properties",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "application-mysql.properties",
+        "resolved": "src/main/resources/application-mysql.properties",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      },
+      {
+        "cited": "pets/createOrUpdateVisitForm.html",
+        "resolved": "src/main/resources/templates/pets/createOrUpdateVisitForm.html",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      }
+    ]
+  },
+  "flags": [],
+  "status": "marked",
+  "questions": {
+    "q1": {
+      "verdict": "right",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "./mvnw spring-boot:run      # or ./gradlew bootRun",
+      "note": "Names Spring PetClinic, describes the domain and stack, and gives working start commands with no database step, which is what the marking rule requires.",
+      "cites_file_line": false,
+      "citations_agree": "yes",
+      "label": "none",
+      "flags_readme": false,
+      "confidence": "high",
+      "outcome": "right_checked",
+      "checked": true,
+      "checked_via": {
+        "src/main/resources/application.properties": [
+          "read"
+        ],
+        "README.md": [
+          "read"
+        ]
+      }
+    },
+    "q2": {
+      "verdict": "right",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "That file sets `database=h2` ... It sets no `spring.datasource.url`. With the H2 driver on the runtime classpath (`pom.xml`), Spring Boot creates an embedded in-memory H2 database",
+      "note": "Gives H2 with both parts of the deciding reason: database=h2 in application.properties and no datasource URL so Boot starts embedded H2 from the runtime dependency; also explains the profiles.",
+      "cites_file_line": false,
+      "citations_agree": "yes",
+      "label": "none",
+      "flags_readme": true,
+      "confidence": "high",
+      "outcome": "right_checked",
+      "checked": true,
+      "checked_via": {
+        "src/main/resources/application.properties": [
+          "read"
+        ]
+      }
+    },
+    "q3": {
+      "verdict": "partial",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "`CacheConfiguration` creates the `vets` cache with `new MutableConfiguration<>().setStatisticsEnabled(true)`. That turns on statistics but sets no expiry, and JCache's default is no expiry.",
+      "note": "Right lifetime, mixed reason: it states CacheConfiguration's MutableConfiguration and the JCache default as fact and only adds the Caffeine cache manager as an unconfirmed possibility ('may'), which the marking rule grades as partial.",
+      "cites_file_line": false,
+      "citations_agree": "partly",
+      "label": "none",
+      "flags_readme": true,
+      "confidence": "high",
+      "outcome": "wrong_other",
+      "checked": true,
+      "checked_via": {
+        "pom.xml": [
+          "read"
+        ],
+        "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java": [
+          "read"
+        ]
+      }
+    },
+    "q4": {
+      "verdict": "right",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "`Owner.getPet(String, boolean)`, compares names with `equalsIgnoreCase`, so `max` matches `Max` and the name is rejected as a duplicate.",
+      "note": "Says no with the controller's case-insensitive duplicate check and also the case-insensitive unique constraint; the misquoted message 'already exists' is an unsupported claim, not a wrong answer.",
+      "cites_file_line": false,
+      "citations_agree": "yes",
+      "label": "none",
+      "flags_readme": true,
+      "confidence": "high",
+      "outcome": "right_checked",
+      "checked": true,
+      "checked_via": {
+        "src/main/java/org/springframework/samples/petclinic/owner/PetController.java": [
+          "read"
+        ],
+        "src/main/java/org/springframework/samples/petclinic/owner/Owner.java": [
+          "read"
+        ]
+      }
+    },
+    "q5": {
+      "verdict": "right",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "In H2, `owners.last_name` is declared `VARCHAR_IGNORECASE`, so the comparison ignores case and both Davis rows match.",
+      "note": "Gives the list page with Betty and Harold Davis, decided by H2's VARCHAR_IGNORECASE column, plus the multiple-match branch and the PostgreSQL contrast.",
+      "cites_file_line": false,
+      "citations_agree": "yes",
+      "label": "none",
+      "flags_readme": true,
+      "confidence": "high",
+      "outcome": "right_checked",
+      "checked": true,
+      "checked_via": {
+        "src/main/resources/db/h2/schema.sql": [
+          "read"
+        ],
+        "src/main/java/org/springframework/samples/petclinic/owner/OwnerRepository.java": [
+          "read"
+        ]
+      }
+    }
+  },
+  "q6": {
+    "note": "All six key steps are present in order with the right classes and methods, including Spring MVC calling loadPetWithVisit before the handler and the owner save cascading to the visit; no service layer or VisitRepository is invented.",
+    "confidence": "high",
+    "steps": {
+      "1": {
+        "found": true,
+        "quote": "`pets/createOrUpdateVisitForm.html`, which POSTs `date`, `description` and a hidden `petId` back to the same URL",
+        "checked": true,
+        "checked_via": {
+          "src/main/resources/templates/pets/createOrUpdateVisitForm.html": [
+            "read"
+          ]
+        }
+      },
+      "2": {
+        "found": true,
+        "quote": "**`VisitController.loadPetWithVisit` (`@ModelAttribute(\"visit\")`).** Spring MVC runs this before the handler.",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ]
+        }
+      },
+      "3": {
+        "found": true,
+        "quote": "**`VisitController.processNewVisitForm`.** Rejects a date that isn't after today (`typeMismatch.visitDate`). On any error it shows the form again",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Visit.java": [
+            "read"
+          ]
+        }
+      },
+      "4": {
+        "found": true,
+        "quote": "**`Owner.addVisit(petId, visit)`.** Finds the pet again and calls `Pet.addVisit`. The visit is already in the pet's `LinkedHashSet` from step 3, and it's the same object, so it isn't added twice.",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Owner.java": [
+            "read"
+          ]
+        }
+      },
+      "5": {
+        "found": true,
+        "quote": "`Owner.pets` and `Pet.visits` are both `@OneToMany(cascade = ALL)`, so the merge reaches the new `Visit`. On commit Hibernate writes a row to `visits`",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Owner.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Pet.java": [
+            "read"
+          ]
+        }
+      },
+      "6": {
+        "found": true,
+        "quote": "adds the flash message \"Your visit has been booked\" and redirects to `/owners/{ownerId}`",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ]
+        }
+      }
+    },
+    "steps_found": 6,
+    "steps_found_and_checked": 6
+  },
+  "unsupported_claims": [
+    {
+      "quote": "`CacheConfiguration` creates the `vets` cache with `new MutableConfiguration<>().setStatisticsEnabled(true)`",
+      "kind": "contradicted",
+      "evidence": "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java:35-37 and pom.xml:81-85 (key: customizer never applied, cache manager is Caffeine's)",
+      "why": "The JCacheManagerCustomizer is never applied because no JCache provider is on the classpath, so the vets cache is Caffeine's unbounded cache, not one created from this MutableConfiguration."
+    },
+    {
+      "quote": "JCache's default is no expiry",
+      "kind": "not found",
+      "evidence": "",
+      "why": "A general framework claim that nothing in the code or key shows, and it is not the mechanism that applies here."
+    },
+    {
+      "quote": "The form comes back with \"already exists\" on the name field.",
+      "kind": "contradicted",
+      "evidence": "src/main/resources/messages/messages.properties:4",
+      "why": "The 'duplicate' message code resolves to 'is already in use'; 'already exists' is only the default fallback text in rejectValue."
+    },
+    {
+      "quote": "The owner already has an ID, so it calls `EntityManager.merge(owner)`.",
+      "kind": "not found",
+      "evidence": "",
+      "why": "A claim about SimpleJpaRepository internals that nothing in the code or key shows."
+    },
+    {
+      "quote": "Hibernate typically fills in `pet_id` with a separate `UPDATE` right after the `INSERT`.",
+      "kind": "not found",
+      "evidence": "",
+      "why": "A claim about Hibernate's SQL for unidirectional one-to-many mappings that nothing in the code or key shows."
+    }
+  ],
+  "summary": {
+    "right": 4,
+    "right_checked": 4,
+    "right_unchecked": 0,
+    "wrong_rigged": 0,
+    "wrong_other": 1,
+    "q6_steps_found": 6,
+    "q6_steps_checked": 6,
+    "unsupported_claims": 5,
+    "contradicted": 2,
+    "not_found": 3,
+    "flags_readme": 4
+  }
+}

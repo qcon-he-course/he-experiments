@@ -1,0 +1,80 @@
+Perfect! I now have all the information I need. Let me provide comprehensive answers to your questions:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a Spring Boot sample application for managing a veterinary clinic. It lets you manage owners, their pets, veterinarians, and visit bookings.
+
+**To get started:**
+- Clone the repository
+- Run: `./mvnw spring-boot:run` (Maven) or `./gradlew bootRun` (Gradle)
+- Visit: http://localhost:8080/
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2 (in-memory database)** is used by default.
+
+**What decides it:** The line `database=h2` in `/work/src/main/resources/application.properties` (line 2). This controls which SQL schema and data files are loaded from `classpath*:db/${database}/schema.sql` and `classpath*:db/${database}/data.sql`.
+
+**Note:** The README says PostgreSQL is the default, but the code shows H2—per the instructions, the code decides.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**10 minutes** (as stated in the README at line 160).
+
+The cache is configured in `CacheConfiguration.java` using Spring's `@Cacheable("vets")` annotation on `VetRepository.findAll()`. The actual TTL is managed by Caffeine (the cache provider in the classpath), but explicit configuration isn't visible in the current code.
+
+## 4. Can Jean Coleman add another pet called "max" if she already has one called "Max"?
+
+**NO**, she cannot.
+
+**Why:**
+- The schema has a UNIQUE constraint on `(owner_id, name)` for the pets table (line 55 of schema.sql)
+- The pet name column is `VARCHAR_IGNORECASE(30)` in H2, which means "Max" and "max" are treated as the same value for comparison
+- The database will reject the insert due to the unique constraint violation
+
+**Note:** The README claims pet names are case-sensitive, but the code shows they're case-insensitive in H2.
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**You would see 2 results:** Betty Davis and Harold Davis.
+
+**Why:**
+- The owner's last_name column is `VARCHAR_IGNORECASE(30)` in H2 (line 39 of schema.sql)
+- This makes the search case-insensitive
+- The search uses Spring Data's `findByLastNameStartingWith(lastname, pageable)` method in `OwnerController.findPaginatedForOwnersLastName()`
+- Both Betty Davis (id 2) and Harold Davis (id 4) have last names starting with "davis"
+
+**Note:** The README says owner search is case-sensitive, but the code shows it's case-insensitive in H2.
+
+## 6. Trace what happens when an owner books a visit for a pet
+
+Here are the steps in order, from form submission to database row:
+
+1. **Form submission** → `POST /owners/{ownerId}/pets/{petId}/visits/new`
+
+2. **VisitController.processNewVisitForm()** (VisitController.java:94-111)
+   - Validates the Visit object
+   - Calls `owner.addVisit(petId, visit)`
+
+3. **Owner.addVisit()** (Owner.java:170-185)
+   - Gets the Pet by ID
+   - Calls `pet.addVisit(visit)`
+
+4. **Pet.addVisit()** (Pet.java:80-82)
+   - Adds the visit to the pet's visits collection: `getVisits().add(visit)`
+
+5. **VisitController.processNewVisitForm()** continues
+   - Calls `this.owners.save(owner)` (VisitController.java:108)
+
+6. **OwnerRepository.save()** (Spring Data JpaRepository)
+   - Persists the Owner entity via Hibernate
+
+7. **Hibernate cascades** (cascade = CascadeType.ALL on relationships)
+   - Owner → Pet (through the `@OneToMany` pets field)
+   - Pet → Visit (through the `@OneToMany` visits field)
+
+8. **Database insertion**
+   - The Visit is inserted into the `visits` table with:
+     - `pet_id` = the pet's ID
+     - `visit_date` = the visit date
+     - `description` = the visit description

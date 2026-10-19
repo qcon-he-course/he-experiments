@@ -1,0 +1,47 @@
+Based on my exploration of the codebase, here are my answers:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a Spring Boot sample application that demonstrates a pet clinic management system. To get started:
+- Clone the repo and navigate to the directory
+- Run with Maven: `./mvnw spring-boot:run`
+- Or with Gradle: `./gradlew bootRun`
+- Access the app at `http://localhost:8080/`
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2** (in-memory database). The decision is made by `/work/src/main/resources/application.properties` line 2: `database=h2`. This variable drives which schema and data SQL files are loaded. (Note: The README claims PostgreSQL is the default, but the code defaults to H2.)
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**10 minutes**. This is documented in the README and implemented via the `@Cacheable("vets")` annotation on `VetRepository.findAll()` (lines 44-46 in VetRepository.java). The cache is configured in `CacheConfiguration.java`.
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**No**. Despite the README claiming "Pet names are case-sensitive," the code contradicts this:
+- `PetController` line 111 validates using `owner.getPet(pet.getName(), true)`
+- `Owner.getPet()` (line 150) uses `equalsIgnoreCase()` for the comparison
+- The H2 schema (line 48) uses `VARCHAR_IGNORECASE(30)` for pet names with a case-insensitive `UNIQUE (owner_id, name)` constraint
+- Result: "max" and "Max" are treated as duplicates and rejected.
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**You will find owners named "Davis"**. Again, despite the README saying the search is case-sensitive, the default H2 database uses `VARCHAR_IGNORECASE(30)` for the `last_name` column (schema.sql line 39). So `OwnerController.processFindForm()` calling `findByLastNameStartingWith("davis")` matches "Davis" case-insensitively.
+
+## 6. Trace the visit booking flow from form submission to database row:
+
+1. **Form Load** - `VisitController.initNewVisitForm()` (line 91)
+   - `@ModelAttribute` calls `loadPetWithVisit()` (line 64), which creates a new `Visit` and adds it to the pet via `pet.addVisit(visit)` (line 79)
+
+2. **Form Submission** - `VisitController.processNewVisitForm()` (line 98)
+   - Validates the visit date (lines 100-102)
+   - Calls `owner.addVisit(petId, visit)` (line 108) → `Owner.addVisit()` (line 176) → `Pet.addVisit()` (Pet.java line 81) which adds visit to the pet's visits collection
+
+3. **Database Save** - `VisitController` line 109: `this.owners.save(owner)`
+   - `OwnerRepository.save()` is inherited from Spring Data JPA
+   - JPA cascades the save via `@OneToMany(cascade = CascadeType.ALL)` in `Pet.java` (line 56)
+
+4. **Database Row Created** - The visit is inserted into the `visits` table
+   - Columns: `id` (auto-generated), `pet_id` (FK to pets), `visit_date`, `description`
+
+5. **Redirect** - Line 111 redirects to `/owners/{ownerId}` with a success message

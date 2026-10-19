@@ -1,0 +1,77 @@
+Now I have enough information to answer all your questions. Let me provide comprehensive answers based on the code, configuration, and documentation:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample application demonstrating Spring Boot, Spring MVC, Spring Data JPA, and other Spring technologies. It's a web application for managing a veterinary clinic—storing owners, pets, vets, and visit records.
+
+**Getting started:**
+```bash
+./mvnw spring-boot:run          # Maven
+# or
+./gradlew bootRun              # Gradle
+```
+Then access at http://localhost:8080/
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2 (in-memory database)** is the default.
+
+**What decides it:** `/work/src/main/resources/application.properties` line 2:
+```properties
+database=h2
+```
+
+You can override with Spring profiles:
+- `spring.profiles.active=mysql` → uses MySQL
+- `spring.profiles.active=postgres` → uses PostgreSQL
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**10 minutes**
+
+This is documented in the README (line 160) and configured via JCache in `CacheConfiguration.java`. The "vets" cache is created with statistics enabled, and Spring Boot's default cache expiration for JCache is 10 minutes.
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**No, she cannot.**
+
+Despite the README stating "Pet names are case-sensitive," the code treats them as **case-insensitive**:
+- `PetController.processCreationForm()` (line 111) checks: `owner.getPet(pet.getName(), true)`
+- `Owner.getPet(String name, boolean ignoreNew)` (line 150) uses: `compName.equalsIgnoreCase(name)`
+- H2 schema uses `VARCHAR_IGNORECASE(30)` for pet names (schema.sql line 48)
+
+So the system would reject "max" as a duplicate of "Max".
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+You would find owners with last name **"Davis"**.
+
+**Why:** The search uses `OwnerController.processFindForm()` → `findByLastNameStartingWith()` (line 145), which does a database prefix search. In H2 (the default), the `owners.last_name` column is `VARCHAR_IGNORECASE` (schema.sql line 39), making the search case-insensitive. So "davis" matches "Davis".
+
+**Note:** The README says owner search is case-sensitive, but the default database (H2) actually performs case-insensitive matching.
+
+## 6. Trace what happens when an owner books a visit for a pet
+
+**Step-by-step:**
+
+1. **Form submitted** to POST `/owners/{ownerId}/pets/{petId}/visits/new`
+
+2. **VisitController.processNewVisitForm()** (VisitController.java:98-112)
+   - Validates visit date (must be after today)
+   - Calls `owner.addVisit(petId, visit)` (VisitController.java:108)
+
+3. **Owner.addVisit(Integer petId, Visit visit)** (Owner.java:176-186)
+   - Calls `pet.addVisit(visit)` (Owner.java:185)
+
+4. **Pet.addVisit(Visit visit)** (Pet.java:81-83)
+   - Adds visit to pet's `visits` collection: `getVisits().add(visit)`
+
+5. **OwnerRepository.save(owner)** (VisitController.java:109)
+   - JpaRepository.saveAndFlush() persists the owner
+
+6. **JPA cascade saves the visit** 
+   - Pet has `@OneToMany(cascade = CascadeType.ALL)` on visits (Pet.java:56)
+   - JPA automatically inserts row into **visits** table with:
+     - `pet_id`: the pet's ID
+     - `visit_date`: the date from the form
+     - `description`: the description from the form

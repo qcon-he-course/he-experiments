@@ -1,0 +1,1 @@
+q1-5=5 q6=6 checked=5 rigged=0 unsupported=2 contradicted=2 flagged=4

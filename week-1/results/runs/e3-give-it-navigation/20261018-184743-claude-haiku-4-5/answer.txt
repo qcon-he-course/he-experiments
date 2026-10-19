@@ -1,0 +1,90 @@
+Excellent! Now I have all the information needed. Let me compile the answers:
+
+## Answers to Your Questions
+
+### 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a Spring Boot sample application for a veterinary clinic management system. It demonstrates Spring Boot, Spring Data JPA, Spring MVC, and Thymeleaf.
+
+**Getting started:**
+- Clone the repository and run `./mvnw spring-boot:run` (Maven) or `./gradlew bootRun` (Gradle)
+- Access the app at `http://localhost:8080/`
+- Java 17 or later is required
+
+---
+
+### 2. Which database does PetClinic use by default, and what decides that?
+
+**Answer:** **H2 database** (in-memory).
+
+**What decides it:** The file `/work/src/main/resources/application.properties` line 2 specifies:
+```properties
+database=h2
+```
+
+This value controls which schema and data files are loaded via:
+```properties
+spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql
+spring.sql.init.data-locations=classpath*:db/${database}/data.sql
+```
+
+**Note:** The README claims PostgreSQL is the default and calls H2 a quick alternative, but the code defaults to H2. The code takes precedence here.
+
+---
+
+### 3. How long does PetClinic keep the vet list in its cache?
+
+**Answer:** **10 minutes** (600 seconds)
+
+**How it works:**
+- `VetRepository.findAll()` methods are annotated with `@Cacheable("vets")`
+- The cache is configured in `CacheConfiguration.java` which creates a cache named `"vets"`
+- The README documentation (line 160) states: "the vet list is refreshed from the database every 10 minutes"
+- Note: The Java code doesn't explicitly specify the TTL; it's configured via the JCache implementation's external configuration (likely `ehcache.xml`)
+
+---
+
+### 4. Can Jean Coleman add another pet called "max" if she already has "Max"?
+
+**Answer:** **NO**
+
+**Why:** Despite the README claiming "Pet names are case-sensitive, so `Max` and `max` are two different pets," the database schemas contradict this:
+
+- **H2 schema** (line 48): `name VARCHAR_IGNORECASE(30)` with constraint `UNIQUE (owner_id, name)` - treats names case-insensitively
+- **PostgreSQL schema** (line 45): `CREATE UNIQUE INDEX... ON pets (owner_id, LOWER(name))` - explicitly uses LOWER() for case-insensitive comparison
+
+Both databases enforce case-insensitive uniqueness, so adding "max" when "Max" exists would violate the unique constraint.
+
+---
+
+### 5. You search owners for "davis" in lowercase. What do you see?
+
+**Answer:** **Depends on the database:**
+
+- **H2**: `last_name VARCHAR_IGNORECASE(30)` - Search would find owners named "Davis", "DAVIS", "davis" (case-insensitive)
+- **PostgreSQL**: Standard TEXT fields are case-sensitive by default - "davis" would NOT match "Davis"
+
+The README states "Owner search is case-sensitive: type the last name as it was entered, for example `Davis`." This is accurate for PostgreSQL but contradicted by the H2 schema.
+
+The search uses Spring Data's `findByLastNameStartingWith(lastName)` method, which is case-sensitive in the Spring Data implementation, but the database query execution depends on the database's collation.
+
+---
+
+### 6. Trace the flow when an owner books a visit - from form submission to database row
+
+**Complete flow:**
+
+| Step | Class | Method | Action |
+|------|-------|--------|--------|
+| 1 | HTML Form | (Thymeleaf) | User submits visit form POST to `/owners/{ownerId}/pets/{petId}/visits/new` |
+| 2 | `VisitController` | `processNewVisitForm()` | Receives form data: `@ModelAttribute Owner owner`, `@PathVariable int petId`, `@Valid Visit visit` |
+| 3 | `VisitController` | `processNewVisitForm()` | Validates visit date is in the future; returns form if validation fails |
+| 4 | `Owner` | `addVisit(petId, visit)` | Called with pet ID and visit object |
+| 5 | `Owner` | `getPet(petId)` | Retrieves the Pet from owner's pets collection |
+| 6 | `Pet` | `addVisit(visit)` | Adds visit to pet's visits collection via `getVisits().add(visit)` |
+| 7 | `OwnerRepository` (Spring Data) | `save(owner)` | Persists the owner with cascading save to pets and visits |
+| 8 | JPA/Hibernate | (Auto-generated) | Inserts a row in the `visits` table with: `pet_id`, `visit_date`, `description` |
+| 9 | `VisitController` | `processNewVisitForm()` | Sets flash message and returns redirect to `/owners/{ownerId}` |
+| 10 | Browser | (HTTP Redirect) | Redirects to owner detail page showing the new visit |
+
+**Database result:** New row in `visits` table with FK reference to the pet, with the visit date and description.

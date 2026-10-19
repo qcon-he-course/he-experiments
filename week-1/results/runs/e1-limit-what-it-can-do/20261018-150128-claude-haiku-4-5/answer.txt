@@ -1,0 +1,45 @@
+Now I have enough information to answer all your questions. Here are the answers:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application that demonstrates best practices for building a veterinary clinic management system. It's designed to manage owners, pets, vets, and visit bookings.
+
+**To get started:**
+```bash
+./mvnw spring-boot:run
+```
+Then navigate to `http://localhost:8080/`
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**Database: H2 (in-memory)**
+
+**What decides it:** The `application.properties` file (/work/src/main/resources/application.properties:2) contains `database=h2`. This setting controls which SQL init scripts and database configuration are loaded. To use PostgreSQL or MySQL instead, you'd need to activate the corresponding Spring profile (`postgres` or `mysql`).
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+According to the README line 160, the vet list is refreshed from the database **every 10 minutes**. However, examining the actual code in `CacheConfiguration.java`, there's no explicit TTL configuration set in the properties or code—just a Caffeine cache provider with statistics enabled. The 10-minute duration may be documented but not explicitly implemented in the current code.
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**Yes.** Pet names are case-sensitive (as stated in the README line 66). "Max" and "max" are treated as two different pets. This is confirmed by the Owner entity where pet name comparisons are case-sensitive in storage.
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**Nothing (no results).** Owner search is case-sensitive. The search uses `findByLastNameStartingWith()` (OwnerController.java:145), which performs a SQL LIKE query that is case-sensitive by default in most databases. If "Davis" was entered with that capitalization, searching for "davis" won't match it.
+
+## 6. Trace what happens when an owner books a visit for a pet
+
+Here's the complete flow from form submission to database:
+
+| Step | Class | Method |
+|------|-------|--------|
+| 1 | `VisitController` | `processNewVisitForm()` (line 98) - POST handler receives the form |
+| 2 | `Owner` | `addVisit(petId, visit)` (line 176) - controller calls this to add visit to owner |
+| 3 | `Pet` | `addVisit(visit)` (line 81) - Owner delegates to Pet's addVisit method |
+| 4 | `Visit` | (in-memory object) - Visit is added to Pet's visits collection |
+| 5 | `OwnerRepository` | `save(owner)` (VisitController line 109) - saves the modified owner |
+| 6 | Spring Data JPA / Hibernate | Persistence mechanism - cascades through Owner → Pet → Visit relationships and generates SQL INSERT for the visit row |
+| 7 | Database | `visits` table - the visit is inserted as a new row |
+
+The cascade works because: Owner has `CascadeType.ALL` on pets (Owner.java:67), and Pet has `CascadeType.ALL` on visits (Pet.java:56), so when `owners.save(owner)` is called, Hibernate persists all related entities.

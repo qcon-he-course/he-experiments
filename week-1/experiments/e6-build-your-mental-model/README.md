@@ -37,7 +37,7 @@ Approve read-only commands, `cgr graph` lookups and `archify`. Writes under `.ha
 
 ## What we saw
 
-We ran E6 interactively on Opus 5.5 on 19 October, in the default permission mode: one `/trace-journey` run and two `/arch-map` runs. We ran no unattended batch, so there are no medians.
+We ran E6 interactively on Opus 5.5 on 19 October, in the default permission mode: one `/trace-journey` run and two `/arch-map` runs. We ran no unattended batch, so there are no medians. Our two diagrams are in [`results/runs/e6-build-your-mental-model/`](../../results/runs/e6-build-your-mental-model/): open the `.html` files in a browser.
 
 - **The journey.** 3 minutes 17 seconds, 29 tool calls (16 Bash, 6 to Serena, 2 to the graph), 1.44M tokens sent. It wrote only under `.harness/`. The drawing had 8 participants and 17 arrows, each with a file and line.
 - **It missed or dashed the framework's steps.** It missed one: Spring calling the `@ModelAttribute` methods on the post. It drew the other three dashed, as inferred, and as arrows from the controller. A sequence diagram has no participant for Spring, so the agent explained the framework's part on a card.

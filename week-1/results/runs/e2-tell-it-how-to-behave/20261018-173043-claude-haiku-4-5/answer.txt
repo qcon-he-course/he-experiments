@@ -1,0 +1,76 @@
+Now I'll answer your questions about PetClinic:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application demonstrating Spring framework best practices for building web applications. It's a pet clinic management system where owners can register their pets and book veterinary visits.
+
+To get started:
+```bash
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+./mvnw spring-boot:run
+```
+Then visit `http://localhost:8080/` in your browser.
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2 in-memory database** is the default (not PostgreSQL as the README states—the code takes precedence here).
+
+The decision is made by the `database` property in `/work/src/main/resources/application.properties:2`:
+```properties
+database=h2
+```
+
+This property is then used to load schema and data files:
+```properties
+spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql
+spring.sql.init.data-locations=classpath*:db/${database}/data.sql
+```
+
+You can override it with profiles like `spring.profiles.active=postgres` or `spring.profiles.active=mysql`.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+The code doesn't explicitly configure a cache timeout. The `CacheConfiguration.java:49` creates a basic `MutableConfiguration<>().setStatisticsEnabled(true)` without any expiration settings. While the README mentions "10 minutes," this timeout is not visible in the codebase—the configuration relies on unspecified defaults.
+
+## 4. Can Jean Coleman add another pet called "max" when she already has one called "Max"?
+
+**No, she cannot.** Two mechanisms prevent this:
+
+- The H2 schema (line 48) defines pet names as `VARCHAR_IGNORECASE(30)` with a unique constraint (line 55): `UNIQUE (owner_id, name)`. This means "Max" and "max" are treated as the same name.
+- `PetController.processCreationForm:111` checks: 
+  ```java
+  if (StringUtils.hasText(pet.getName()) && pet.isNew() && owner.getPet(pet.getName(), true) != null) {
+      result.rejectValue("name", "duplicate", "already exists");
+  }
+  ```
+  The lookup uses `Owner.getPet(String name, boolean ignoreNew):150` which calls `compName.equalsIgnoreCase(name)`, performing case-insensitive comparison.
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**You will find both Betty Davis and Harold Davis** because the H2 schema (line 39) defines owner last names as `VARCHAR_IGNORECASE(30)`. The search uses `OwnerRepository.findByLastNameStartingWith()` which is case-insensitive in H2, so "davis" matches "Davis".
+
+(Sample data: Betty Davis is owner id=2, Harold Davis is owner id=4)
+
+## 6. Trace booking a visit: form submission to database row
+
+When an owner submits the "New Visit" form:
+
+1. **Route match** → `VisitController.processNewVisitForm:98` (POST `/owners/{ownerId}/pets/{petId}/visits/new`)
+
+2. **Before controller runs** → `VisitController.loadPetWithVisit:64` (`@ModelAttribute`)
+   - Fetches owner via `OwnerRepository.findById(ownerId):66`
+   - Fetches pet via `Owner.getPet(petId):70`
+   - Creates new `Visit` object and adds to pet: `Pet.addVisit(visit):79` (from Pet.java line 81-82)
+
+3. **Validation** → `VisitController.processNewVisitForm:100-102`
+   - Checks visit date is in the future
+
+4. **Associate visit with pet** → `VisitController.processNewVisitForm:108`
+   - Calls `Owner.addVisit(Integer petId, Visit visit):176`
+   - Which calls `Pet.addVisit(visit)` internally
+
+5. **Persist to database** → `VisitController.processNewVisitForm:109`
+   - `OwnerRepository.save(owner)` (Spring Data JpaRepository method)
+   - Cascades to save all visits due to `Pet.visits` with `cascade = CascadeType.ALL` (Pet.java line 56)
+   - INSERT into `visits` table with: `pet_id`, `visit_date`, `description`

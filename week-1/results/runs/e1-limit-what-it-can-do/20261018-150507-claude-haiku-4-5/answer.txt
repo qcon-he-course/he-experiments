@@ -1,0 +1,64 @@
+Now I have enough information to answer your questions. Let me provide comprehensive answers:
+
+## 1. **What is this project about? How do I get started?**
+
+Spring PetClinic is a sample Spring Boot application demonstrating a web-based pet clinic management system where owners can manage their pets and book visits with vets. 
+
+To get started:
+```bash
+./mvnw spring-boot:run
+```
+Then visit `http://localhost:8080/`
+
+## 2. **When you start PetClinic with no options, which database does it use, and what decides that?**
+
+**H2 (in-memory database)** is used by default.
+
+The decision is made by the `database=h2` property in `/work/src/main/resources/application.properties:2`. This property controls which SQL schema and seed data are loaded via the properties `spring.sql.init.schema-locations` and `spring.sql.init.data-locations`.
+
+PostgreSQL is available as an alternative with the `postgres` Spring profile.
+
+## 3. **How long does PetClinic keep the vet list in its cache?**
+
+The README states **10 minutes**, but this is not actually configured in the code. The `CacheConfiguration.java` creates a "vets" cache with statistics enabled but doesn't specify a TTL. This appears to be **outdated documentation**—the actual expiration behavior depends on Caffeine's defaults or runtime configuration not visible in the source.
+
+## 4. **Can Jean Coleman add another pet called "max" if she already has "Max"?**
+
+**No, she cannot.** There's a unique constraint `UNIQUE (owner_id, name)` on the pets table that prevents duplicate pet names per owner.
+
+However, the case-sensitivity varies by database:
+- **H2**: Uses `VARCHAR_IGNORECASE`, so "Max" and "max" are treated identically
+- **PostgreSQL**: Uses `UNIQUE (owner_id, LOWER(name))`, so both are treated as "max"
+- **MySQL**: VARCHAR is case-insensitive by default, so both are treated identically
+
+## 5. **You search owners for "davis", all lower case. What do you see?**
+
+This depends on the database:
+- **H2**: Same results as searching for "Davis" (case-insensitive due to `VARCHAR_IGNORECASE`)
+- **PostgreSQL**: Different/no results (case-sensitive by default in TEXT columns)
+- **MySQL**: Same results as "Davis" (case-insensitive by default)
+
+The code uses `findByLastNameStartingWith()` which performs a database query, so the database's collation determines the case-sensitivity. The README warns: "Owner search is case-sensitive: type the last name as it was entered, for example `Davis`" — this is guidance for PostgreSQL, the production database.
+
+## 6. **Trace the visit booking flow from form submission to database row:**
+
+1. **VisitController.processNewVisitForm()** (line 98-112)
+   - Validates the visit date
+
+2. **Owner.addVisit(Integer petId, Visit visit)** (line 176-186)
+   - Calls `getPet(petId)` to retrieve the pet from the owner's pet list
+   - Calls `pet.addVisit(visit)`
+
+3. **Pet.addVisit(Visit visit)** (line 81-83)
+   - Adds the visit to the pet's visits Set
+
+4. **OwnerRepository.save(owner)** (VisitController, line 109)
+   - Persists the owner entity through JpaRepository
+
+5. **Hibernate/JPA cascade** (Pet.java line 56: `CascadeType.ALL`)
+   - Detects the new Visit in Pet.visits and persists it
+
+6. **Database INSERT** into `visits` table
+   - Row created with columns: `id`, `pet_id`, `visit_date`, `description`
+
+The cascade configuration on the Pet-to-Visit relationship means adding a visit to a pet and then saving the owner automatically persists the visit row.

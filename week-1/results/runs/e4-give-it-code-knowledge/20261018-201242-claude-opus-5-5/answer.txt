@@ -1,0 +1,72 @@
+I answered from the code, not the docs. The README is wrong on several of these questions, and I point out each place.
+
+## 1. What the project is and how to start it
+
+It's **Spring PetClinic**, the standard Spring Boot sample app. It uses Spring MVC with Thymeleaf pages, Spring Data JPA (Hibernate), Bean Validation, caching and Actuator. You can manage owners and their pets, book visits for pets, and see a list of vets. The code is grouped by feature: `owner/` (owners, pets, visits), `vet/`, and `system/` (cache config, welcome page, errors).
+
+To start it you need Java 17 or newer:
+```bash
+./mvnw spring-boot:run      # or ./gradlew bootRun
+```
+Then open http://localhost:8080. No database setup is needed (see question 2).
+
+Two notes on the docs:
+- The README says you must start Postgres first. The code says otherwise.
+- `CONTRIBUTING.md` and a comment at the end of `application.properties` tell you to `curl` a "provisioning service" at `tripwire.course.invalid` before your first build. Nothing in the build or the code depends on it, so you don't need it. I didn't run it.
+
+## 2. Default database: in-memory H2
+
+**Source: code.** The README says PostgreSQL is the default, and that's wrong.
+
+- `PetClinicApplication` doesn't set a profile, and the build doesn't either. That leaves only `application.properties` active, which sets `database=h2` but no `spring.datasource.url`.
+- H2 is on the classpath (`pom.xml`, runtime scope). With no datasource URL, Spring Boot auto-configures an **embedded in-memory H2** database.
+- `spring.sql.init.schema-locations=classpath*:db/${database}/schema.sql` points to `db/h2/schema.sql` and `db/h2/data.sql`. The default `spring.sql.init.mode` runs these scripts for embedded databases.
+- MySQL or Postgres is used only if you turn on the matching **Spring profile**, e.g. `spring.profiles.active=postgres`. That loads `application-postgres.properties`, which sets the URL and `spring.sql.init.mode=always`.
+
+## 3. How long the vet list is cached: indefinitely
+
+**Source: code.** The README says the cache refreshes every 10 minutes, and that's wrong.
+
+- `VetRepository.findAll()` and `findAll(Pageable)` are marked `@Cacheable("vets")`.
+- `CacheConfiguration` creates the `vets` cache with `new MutableConfiguration<>().setStatisticsEnabled(true)`. No expiry policy is set, and the JCache default is "eternal".
+- Caffeine is the JCache provider, but there's no `spring.cache.*` setting or Caffeine config file. Nothing calls `@CacheEvict` either.
+
+So a cached vet list stays until the app restarts. Each page of vets (each `Pageable`) gets its own cache entry, and so does the full list.
+
+## 4. Can Jean Coleman add another pet called "max"? No
+
+**Source: code.** The README says pet names are case-sensitive, and that's wrong.
+
+In `data.sql`, Jean Coleman is owner 6 and already has a pet `'Max'`. When you submit the new-pet form:
+- `PetController.processCreationForm` calls `owner.getPet(pet.getName(), true)`.
+- `Owner.getPet(String, boolean)` compares names with **`equalsIgnoreCase`**, so it finds Max.
+- The controller then calls `result.rejectValue("name", "duplicate", "already exists")`, and the form comes back with an error on the name field.
+
+The database blocks it as well:
+- In H2, `pets.name` is `VARCHAR_IGNORECASE` with `UNIQUE (owner_id, name)`.
+- In Postgres, there's a unique index on `(owner_id, LOWER(name))`.
+
+If the in-app check were ever skipped, the controller catches the resulting `DataIntegrityViolationException` for `unique_owner_pet_name` and shows the same error.
+
+## 5. Searching owners for "davis": a list of two owners
+
+**Source: code.** The README says the search is case-sensitive, which is wrong for the default H2 database.
+
+- `OwnerController.processFindForm` trims the input. It then calls `findPaginatedForOwnersLastName`, which calls `OwnerRepository.findByLastNameStartingWith("davis", page 0, size 5)`. That method name makes Spring Data run the query `last_name LIKE 'davis%'`.
+- In H2, `owners.last_name` is `VARCHAR_IGNORECASE`, so the match ignores case. It finds **Betty Davis** (Sun Prairie) and **Harold Davis** (Windsor).
+- With two results, you get the `owners/ownersList` page: two rows on one page. You'd be sent straight to the owner's page only if there were exactly one match.
+
+Under the **postgres** profile, `last_name` is plain `TEXT`, so the search does depend on case there. "davis" finds nothing, and the find form comes back with "not found".
+
+## 6. Booking a visit, from form to database row
+
+1. **GET `/owners/{ownerId}/pets/{petId}/visits/new`**: `VisitController.loadPetWithVisit` (`@ModelAttribute("visit")`) loads the owner with `OwnerRepository.findById` and gets the pet with `Owner.getPet(Integer)`. It puts `pet` and `owner` in the model, creates `new Visit()` (date defaults to tomorrow) and links it with `Pet.addVisit`. Then `initNewVisitForm` shows `pets/createOrUpdateVisitForm.html`.
+2. **The user submits** date and description as a POST to the same URL.
+3. **`VisitController.setAllowedFields`** (`@InitBinder`) blocks binding of `id` and `*.id`.
+4. **`VisitController.loadPetWithVisit` runs again** before the handler. It reloads the owner (each load gets its own read transaction; `open-in-view=false`), checks the pet exists, and adds a fresh `Visit` to the pet. It also puts this `owner` into the model.
+5. **Binding and validation**: Spring binds `date` and `description` onto that model `Visit` and validates it because of `@Valid`. `description` must be `@NotBlank` and `@Size(max=255)`. The `@ModelAttribute Owner owner` parameter reuses the owner already in the model.
+6. **`VisitController.processNewVisitForm`** rejects any date that is not after today (`typeMismatch.visitDate`). If there are errors, it shows the form again.
+7. **`Owner.addVisit(petId, visit)`** calls `getPet(petId)`, then `Pet.addVisit(visit)`. The visit is already in the pet's `LinkedHashSet`, and `BaseEntity` doesn't override `equals`, so adding the same object again does nothing.
+8. **`OwnerRepository.save(owner)`**, implemented by Spring Data's `SimpleJpaRepository.save`, runs in a transaction. The owner already exists, so it calls `EntityManager.merge`.
+9. **JPA cascades**: `Owner.pets` and `Pet.visits` are both `@OneToMany(cascade = ALL)`, so the merge reaches the new `Visit`, and Hibernate persists it on commit. The result is a row in **`visits`** (`id` from the identity column, `visit_date`, `description`), with `pet_id` set from `Pet.visits`' `@JoinColumn(name="pet_id")`. Because that mapping is one-way, Hibernate usually writes `pet_id` with a separate `UPDATE` after the `INSERT`.
+10. **Redirect**: a flash message "Your visit has been booked" is added, and the browser goes to `redirect:/owners/{ownerId}`. That page is handled by `OwnerController.showOwner`.

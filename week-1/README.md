@@ -35,6 +35,7 @@ On macOS, `pbcopy < ../questions.txt` puts the questions on the clipboard before
 
 - [results/summary.md](results/summary.md): the medians of our stored runs, five per rung on Opus 5.5 and five on Haiku 4.5, with the outcome of each question. `summary.json` holds the same figures.
 - [results/findings.md](results/findings.md): what the runs showed, by experiment, with the evidence for each finding.
+- [results/runs/](results/runs/): each of our 60 stored runs, trimmed: the prompt, the final answer, the marks and `show-run.sh`'s summary. Also E6's two diagrams.
 
 A model (Claude Fable 5.1) marked every stored run against [reference/answer-key.md](reference/answer-key.md). Nobody has confirmed those marks by hand, so read them as model-marked.
 

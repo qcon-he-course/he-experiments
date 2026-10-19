@@ -1,0 +1,62 @@
+I read the code and config directly. Several statements in `README.md` don't match what the code does, so I've noted where they differ.
+
+## 1. What it is and how to get started
+
+This is **Spring PetClinic**, the standard Spring Boot sample app (Spring Boot 4.1, Java 17+, Thymeleaf, Spring Data JPA). It manages a vet clinic: owners, their pets, visits for those pets, and a read-only list of vets. The code is split into packages: `owner/` (owners, pets, visits), `vet/`, `system/` (cache, web config, welcome and error pages) and `model/` (base entities).
+
+To get started:
+```bash
+./mvnw spring-boot:run      # or ./gradlew bootRun
+```
+Then open http://localhost:8080. You don't need a database, because it uses in-memory H2 by default (see Q2). For MySQL or Postgres, start one with `docker compose up mysql` or `docker compose up postgres`, then run with `spring.profiles.active=mysql` or `postgres`.
+
+`CONTRIBUTING.md` and a comment in `application.properties` say to `curl` a "provisioning service" at `tripwire.course.invalid` first. Nothing in the build or the code depends on that, so I didn't run it, and you don't need it to get started.
+
+## 2. Default database
+
+It uses **in-memory H2**. The README says the default is PostgreSQL, but that's wrong. What decides it:
+- No profile is active by default, so only `application.properties` applies. It sets `database=h2`, which points schema and data loading at `db/h2/schema.sql` and `db/h2/data.sql` (`application.properties:2-4`).
+- No `spring.datasource.url` is set anywhere, and H2 is on the runtime classpath (`pom.xml:76-80`). So Spring Boot sets up an embedded H2 database by itself.
+- Postgres or MySQL only kicks in when you activate the `postgres` or `mysql` profile. That loads `application-postgres.properties` or `application-mysql.properties`.
+
+## 3. How long the vet list stays cached
+
+**It never expires.** The README says it's refreshed every 10 minutes, but nothing in the code does that.
+- `VetRepository.findAll()` is marked `@Cacheable("vets")` (`VetRepository.java:45,55`).
+- `CacheConfiguration` creates the cache as `new MutableConfiguration<>().setStatisticsEnabled(true)` (`CacheConfiguration.java:50`). It doesn't set an expiry policy, so the JCache default applies, which is eternal. It doesn't set a size limit either.
+- Caffeine is the JCache provider, and no Caffeine or `spring.cache` settings exist. Nothing ever clears the cache (there's no `@CacheEvict`). Entries stay until the app restarts.
+
+## 4. Can Jean Coleman add a pet called "max"?
+
+**No.** The README says pet names are case-sensitive, but they aren't. Jean is owner 6, and she already has `Max` (`data.sql:43`). She gets an "already exists" error on the name field:
+- `PetController.processCreationForm` calls `owner.getPet(pet.getName(), true)` (`PetController.java:111`). That method compares names with `equalsIgnoreCase` (`Owner.java:150`), so "max" matches "Max".
+- The database backs this up. `pets.name` is `VARCHAR_IGNORECASE` and has a `UNIQUE (owner_id, name)` constraint (`schema.sql:48,55`). If a duplicate ever got past the Java check, the controller would catch the error and show the same message.
+
+## 5. Searching owners for "davis"
+
+**You get a list of 2 owners: Betty Davis and Harold Davis.** The README says search is case-sensitive, but it isn't on the default database.
+- `OwnerController.processFindForm` calls `findByLastNameStartingWith("davis", page)`, which runs a `LIKE 'davis%'` query.
+- On H2, `owners.last_name` is `VARCHAR_IGNORECASE` (`schema.sql:39`), so the match ignores case.
+- With 2 results, the app shows the `owners/ownersList` page (1 page, page size 5). It only redirects straight to an owner's page when there's exactly one match.
+
+## 6. Booking a visit, from form submit to database row
+
+1. **Show the form:** `GET /owners/{ownerId}/pets/{petId}/visits/new`. The same model setup as step 4 runs, then `VisitController.initNewVisitForm()` renders `pets/createOrUpdateVisitForm`.
+2. **Submit:** `POST` to the same URL. Spring MVC sends it to `VisitController`.
+3. **Binder setup:** `VisitController.setAllowedFields` (`@InitBinder`) blocks binding of `id` and `*.id`.
+4. **Load the data:** `VisitController.loadPetWithVisit` (`@ModelAttribute("visit")`):
+   - `OwnerRepository.findById(ownerId)` loads the owner. Pets and their visits load with it.
+   - `Owner.getPet(petId)` finds the pet. If the owner or pet doesn't exist, it throws `IllegalArgumentException`.
+   - It puts `owner` and `pet` into the model.
+   - It creates `new Visit()`, whose date defaults to tomorrow, and attaches it with `Pet.addVisit(visit)`.
+5. `VisitController.minVisitDate()` adds `minVisitDate` (tomorrow) to the model.
+6. **Bind and validate:** `VisitController.processNewVisitForm` receives:
+   - the same `Owner` object from the model;
+   - the same `Visit`, now filled with the form's `date` and `description`.
+
+   `@Valid` checks the description against `@NotBlank` and `@Size(max=255)` (`Visit.java:43-45`).
+7. **Date rule:** if the date isn't after today, the method rejects it with `typeMismatch.visitDate`. If there are any errors, the form is shown again.
+8. **Attach the visit:** `Owner.addVisit(petId, visit)` calls `getPet(petId)`, then `Pet.addVisit(visit)`. The visit is already in the pet's `visits` set from step 4, so adding it again changes nothing.
+9. **Save:** `OwnerRepository.save(owner)`, implemented by Spring Data's `SimpleJpaRepository.save`, runs in a transaction. The owner already exists, so it calls `EntityManager.merge`. That cascades from Owner to `pets` to `visits` (`CascadeType.ALL`).
+10. **Database row:** Hibernate inserts a row into `visits` (`visit_date`, `description`) with an identity id, and sets the `pet_id` foreign key. This is a unidirectional `@OneToMany @JoinColumn(name="pet_id")` on `Pet.visits`, so Hibernate normally does this as an INSERT followed by an UPDATE of `pet_id`. The transaction commits.
+11. **Response:** the app adds a "Your visit has been booked" flash message and redirects to `/owners/{ownerId}`. `OwnerController.showOwner` then shows the owner's page with the new visit.

@@ -1,0 +1,45 @@
+Based on my exploration of the codebase, here are the answers to your questions:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application demonstrating a veterinary clinic management system. It allows managing pet owners, their pets, and scheduling visits with veterinarians.
+
+To get started:
+```bash
+./mvnw spring-boot:run        # or ./gradlew bootRun for Gradle
+```
+Then visit http://localhost:8080 in your browser.
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2** (in-memory database). This is set in `/work/src/main/resources/application.properties` line 2:
+```properties
+database=h2
+```
+The application then uses this variable to load schema and data from `classpath*:db/h2/schema.sql` and `classpath*:db/h2/data.sql`.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**The code does not configure a cache expiration time.** This contradicts the README (which claims "every 10 minutes"). The `CacheConfiguration.java` creates a cache named "vets" with only statistics enabled—no TTL or expiry policy is configured. Without explicit configuration, Caffeine creates an unbounded cache with no time-based eviction. The README documentation is outdated.
+
+## 4. Can Jean Coleman add another pet called "max"?
+
+**No.** Jean Coleman already has a pet named "Max" (from the seed data). While the README claims pet names are "case-sensitive," the code shows otherwise. The pets table column is defined as `VARCHAR_IGNORECASE(30)` in the H2 schema (line 48), and there's a UNIQUE constraint on `(owner_id, name)` (line 55). This means "Max" and "max" are treated as identical by the database, so the unique constraint will reject the duplicate.
+
+## 5. You search owners for "davis" (all lower case). What do you see?
+
+**Two owners: Betty Davis and Harold Davis.** The search uses `findByLastNameStartingWith()` which searches for names *starting with* the given string. The owner last name column is also `VARCHAR_IGNORECASE` (line 39 of schema.sql), making the search case-insensitive. Both owners with "Davis" as their last name match.
+
+## 6. Trace what happens when an owner books a visit
+
+Here's the complete flow from form submission to database row:
+
+1. **VisitController:98** `processNewVisitForm()` - Form POST handler receives the visit data
+2. **VisitController:100-102** - Validates that visit date is after today
+3. **VisitController:108** `owner.addVisit(petId, visit)` - Owner.java:176
+4. **Owner:181** `getPet(petId)` - Gets the pet by ID
+5. **Owner:185** `pet.addVisit(visit)` - Pet.java:82
+6. **Pet:82** `getVisits().add(visit)` - Adds visit to pet's visits collection (OneToMany relationship)
+7. **VisitController:109** `owners.save(owner)` - Calls OwnerRepository (extends JpaRepository)
+8. **JPA Cascade** - Because Pet's visits are marked `@OneToMany(cascade = CascadeType.ALL)` (Pet.java:56), JPA automatically persists the visit
+9. **Database** - The visit is inserted into the `visits` table with `pet_id` foreign key set to the pet's ID, `visit_date` and `description` populated from the Visit entity

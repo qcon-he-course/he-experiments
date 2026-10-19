@@ -1,0 +1,270 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "Owner Adds a New Pet",
+    "viewBox": [
+      1080,
+      1000
+    ],
+    "column_fit": "spread",
+    "quality_profile": "showcase"
+  },
+  "participants": [
+    {
+      "id": "browser",
+      "type": "external",
+      "label": "Browser",
+      "sublabel": "anonymous"
+    },
+    {
+      "id": "ctrl",
+      "type": "backend",
+      "label": "PetController",
+      "sublabel": "/owners/{ownerId}"
+    },
+    {
+      "id": "fmt",
+      "type": "backend",
+      "label": "TypeFormatter",
+      "sublabel": "PetTypeFormatter"
+    },
+    {
+      "id": "val",
+      "type": "backend",
+      "label": "PetValidator",
+      "sublabel": "@InitBinder(pet)"
+    },
+    {
+      "id": "owner",
+      "type": "backend",
+      "label": "Owner",
+      "sublabel": "JPA entity"
+    },
+    {
+      "id": "ownerRepo",
+      "type": "backend",
+      "label": "OwnerRepository",
+      "sublabel": "Spring Data JPA"
+    },
+    {
+      "id": "typeRepo",
+      "type": "backend",
+      "label": "PetTypeRepo",
+      "sublabel": "PetTypeRepository"
+    },
+    {
+      "id": "db",
+      "type": "database",
+      "label": "Database",
+      "sublabel": "owners, pets, types"
+    }
+  ],
+  "segments": [
+    {
+      "from": 160,
+      "to": 400,
+      "label": "Open form"
+    },
+    {
+      "from": 420,
+      "to": 700,
+      "label": "Bind + validate"
+    },
+    {
+      "from": 720,
+      "to": 940,
+      "label": "Save + redirect"
+    }
+  ],
+  "messages": [
+    {
+      "id": "get-form",
+      "from": "browser",
+      "to": "ctrl",
+      "y": 180,
+      "label": "GET pets/new  PetController.java:100",
+      "variant": "emphasis"
+    },
+    {
+      "id": "find-owner-1",
+      "from": "ctrl",
+      "to": "ownerRepo",
+      "y": 222,
+      "label": "findById(ownerId)  PetController.java:69",
+      "variant": "default"
+    },
+    {
+      "id": "select-owner-1",
+      "from": "ownerRepo",
+      "to": "db",
+      "y": 264,
+      "label": "SELECT owner+pets  Owner.java:67 (inferred)",
+      "variant": "dashed"
+    },
+    {
+      "id": "find-types-1",
+      "from": "ctrl",
+      "to": "typeRepo",
+      "y": 306,
+      "label": "findPetTypes()  PetController.java:64",
+      "variant": "default"
+    },
+    {
+      "id": "select-types-1",
+      "from": "typeRepo",
+      "to": "db",
+      "y": 348,
+      "label": "SELECT types  PetTypeRepository.java:36",
+      "variant": "default"
+    },
+    {
+      "id": "form-view",
+      "from": "ctrl",
+      "to": "browser",
+      "y": 390,
+      "label": "pet form view  PetController.java:104",
+      "variant": "return"
+    },
+    {
+      "id": "post-form",
+      "from": "browser",
+      "to": "ctrl",
+      "y": 440,
+      "label": "POST pets/new  PetController.java:107",
+      "variant": "emphasis"
+    },
+    {
+      "id": "parse-type",
+      "from": "ctrl",
+      "to": "fmt",
+      "y": 482,
+      "label": "parse(type)  PetTypeFormatter.java:51 (inferred)",
+      "variant": "dashed"
+    },
+    {
+      "id": "find-types-2",
+      "from": "fmt",
+      "to": "typeRepo",
+      "y": 524,
+      "label": "findPetTypes()  PetTypeFormatter.java:52",
+      "variant": "default"
+    },
+    {
+      "id": "validate",
+      "from": "ctrl",
+      "to": "val",
+      "y": 566,
+      "label": "validate  PetValidator.java:39 (inferred)",
+      "variant": "dashed"
+    },
+    {
+      "id": "dup-check",
+      "from": "ctrl",
+      "to": "owner",
+      "y": 608,
+      "label": "getPet(name,true)  PetController.java:111",
+      "variant": "default"
+    },
+    {
+      "id": "birth-check",
+      "from": "ctrl",
+      "to": "browser",
+      "y": 650,
+      "label": "errors: form again  PetController.java:120",
+      "variant": "return"
+    },
+    {
+      "id": "add-pet",
+      "from": "ctrl",
+      "to": "owner",
+      "y": 740,
+      "label": "addPet  PetController.java:125",
+      "variant": "emphasis"
+    },
+    {
+      "id": "save",
+      "from": "ctrl",
+      "to": "ownerRepo",
+      "y": 782,
+      "label": "saveAndFlush(owner)  PetController.java:126",
+      "variant": "emphasis"
+    },
+    {
+      "id": "insert-pet",
+      "from": "ownerRepo",
+      "to": "db",
+      "y": 824,
+      "label": "INSERT pets (cascade)  Owner.java:67 (inferred)",
+      "variant": "dashed"
+    },
+    {
+      "id": "dup-violation",
+      "from": "db",
+      "to": "ctrl",
+      "y": 866,
+      "label": "unique violation  PetController.java:128",
+      "variant": "return"
+    },
+    {
+      "id": "redirect",
+      "from": "ctrl",
+      "to": "browser",
+      "y": 908,
+      "label": "redirect owner  PetController.java:136",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "ctrl",
+      "from": 174,
+      "to": 396,
+      "type": "backend"
+    },
+    {
+      "participant": "ctrl",
+      "from": 434,
+      "to": 914,
+      "type": "backend"
+    },
+    {
+      "participant": "db",
+      "from": 258,
+      "to": 354,
+      "type": "database"
+    },
+    {
+      "participant": "db",
+      "from": 818,
+      "to": 872,
+      "type": "database"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "orange",
+      "title": "No access control",
+      "items": [
+        "No Spring Security dependency in pom.xml",
+        "Any anonymous visitor can add a pet to any owner id"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "No Pet repository",
+      "items": [
+        "The pet is saved through the Owner aggregate",
+        "JPA cascade on Owner.pets writes the pets row"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Dashed = inferred",
+      "items": [
+        "Framework wiring (binder, formatter, @Valid) and Hibernate-generated SQL",
+        "Not confirmed by a runtime trace"
+      ]
+    }
+  ]
+}

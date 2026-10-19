@@ -1,0 +1,67 @@
+Based on my exploration of the codebase, here are the answers to your questions:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a sample Spring Boot application for managing a veterinary clinic. It demonstrates Spring frameworks and best practices.
+
+**Getting started:**
+- Clone the repo and run `./mvnw spring-boot:run` (Maven) or `./gradlew bootRun` (Gradle)
+- Access it at http://localhost:8080/
+- Java 17+ is required
+
+## 2. Default database with no options?
+
+**H2 in-memory database.** This is set in `/work/src/main/resources/application.properties` line 2: `database=h2`. If you want PostgreSQL instead, you must run with `--spring.profiles.active=postgres`.
+
+## 3. Vet list cache duration?
+
+The README claims "every 10 minutes," but this appears to be **outdated documentation**. The actual code in `CacheConfiguration.java` doesn't specify an explicit TTL—it just creates a JCache "vets" cache with Caffeine as the implementation. Without an explicit TTL configured, Caffeine would cache indefinitely (for the app's lifetime) by default.
+
+## 4. Can Jean Coleman add another pet called "max"?
+
+**No.** Jean Coleman has a pet named "Max" (seen in `/work/src/main/resources/db/h2/data.sql` line 43, owner ID 6). The databases use **case-insensitive collations**:
+- H2: `VARCHAR_IGNORECASE` 
+- PostgreSQL: `UNIQUE INDEX on (owner_id, LOWER(name))`
+- MySQL: Default case-insensitive VARCHAR
+
+The constraint treats "Max" and "max" as the same value, so adding "max" would violate the unique constraint.
+
+## 5. Search owners for "davis" in lowercase?
+
+You **would see all owners with last name Davis**, because owner name searches are case-insensitive:
+- `OwnerController.processFindForm()` calls `findByLastNameStartingWith(lastname, pageable)` at line 145
+- This generates a SQL LIKE query against H2's `VARCHAR_IGNORECASE` column (line 39 of schema)
+- Returns Betty Davis and Harold Davis (from the sample data)
+
+*Note: The README claims case-sensitive search, but the code disagrees—the code (via database collation) wins.*
+
+## 6. Trace: booking a visit from form submission to database
+
+Here's the complete flow when submitting a visit booking form:
+
+1. **Form submission** → POST `/owners/{ownerId}/pets/{petId}/visits/new`
+   - `VisitController.processNewVisitForm()` at line 97-112
+
+2. **@ModelAttribute binding** - Spring calls `loadPetWithVisit()` at line 63-81
+   - Fetches the owner by ID: `owners.findById(ownerId)`
+   - Retrieves the pet by ID: `owner.getPet(petId)`
+   - Creates a new Visit object and adds it to the pet
+
+3. **Validation** at line 100-102 in `VisitController`
+   - Checks that visit date is after today
+
+4. **Add visit to pet** at line 108
+   - `owner.addVisit(petId, visit)` calls `Owner.addVisit()` at line 176-186
+   - Which calls `pet.addVisit(visit)` at `Pet.addVisit()` line 81-83
+   - This adds the Visit to the pet's visits collection
+
+5. **Persist to database** at line 109
+   - `this.owners.save(owner)` 
+   - `OwnerRepository.save()` (inherited from `JpaRepository<Owner, Integer>`)
+   - Hibernate detects the Visit in the pet's `@OneToMany` collection (Pet.java line 56-59 with `CascadeType.ALL`)
+   - Inserts a row into the **visits table** with: `(id, pet_id, visit_date, description)`
+
+6. **Redirect** at line 111
+   - Redirects to owner details page with success message
+
+The journey: Form → Controller → ModelAttribute binding → Validation → Entity relationships (Owner→Pet→Visit) → JPA cascade save → INSERT into visits table.

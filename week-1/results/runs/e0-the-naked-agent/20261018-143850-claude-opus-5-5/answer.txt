@@ -1,0 +1,64 @@
+Here are the answers. Where the README disagrees with the code, I went with the code. The README's "Data entry", "Database configuration" and "Caching" sections are wrong on several points.
+
+## 1. What the project is and how to start
+
+It's **Spring PetClinic**, the standard Spring Boot sample app: a vet clinic where you manage owners, their pets and the pets' visits, and see a list of vets. It's built with Spring MVC, Thymeleaf pages, Spring Data JPA (Hibernate), Bean Validation and a cache.
+
+The code is organised by feature in `src/main/java/org/springframework/samples/petclinic/`: `owner/` (owners, pets, visits), `vet/`, `system/` (cache, errors, welcome page) and `model/` (base entities).
+
+To get started:
+- Install a JDK, Java 17 or newer.
+- Run `./mvnw spring-boot:run` or `./gradlew bootRun`, then open http://localhost:8080.
+- You don't need a database for this. Despite what the README says, the default is an in-memory H2 database (see question 2).
+- To use MySQL or Postgres, start it with `docker compose up mysql|postgres` and run with `spring.profiles.active=mysql` or `postgres`.
+- Run `./mvnw verify` before opening a pull request.
+
+## 2. Default database
+
+It's **in-memory H2**, not PostgreSQL as the README claims. Three things decide this:
+- `src/main/resources/application.properties:2` sets `database=h2`. The two lines after it use that value to pick `db/h2/schema.sql` and `db/h2/data.sql`.
+- No profile is active by default, so `application-postgres.properties` and `application-mysql.properties` (which set `database=` and a `spring.datasource.url`) are never loaded.
+- With no datasource URL and H2 on the classpath (`pom.xml:76-80`), Spring Boot creates an embedded H2 database. It loads the H2 schema and sample data at startup because that's the default for embedded databases.
+
+## 3. How long the vet list stays cached
+
+**It never expires.** It stays cached until the app restarts. The README's "every 10 minutes" isn't in the code anywhere.
+- `VetRepository.findAll(...)` is marked `@Cacheable("vets")` (`vet/VetRepository.java:45,55`).
+- `system/CacheConfiguration.java:49-51` creates the cache with `new MutableConfiguration<>().setStatisticsEnabled(true)` and sets no expiry, so the JCache default (entries never expire) applies.
+- No `spring.cache.*` or Caffeine expiry setting exists in the properties either.
+
+## 4. Can Jean Coleman add another pet called "max"?
+
+**No.** She gets an "already exists" error on the name field. The README says pet names are case-sensitive, but they aren't.
+- `PetController.processCreationForm` (`owner/PetController.java:111`) calls `owner.getPet(pet.getName(), true)`.
+- That method compares names with `equalsIgnoreCase` (`owner/Owner.java:150`), so "max" matches her existing Max (`data.sql:43`, owner 6).
+- The database blocks it as well: `pets.name` is `VARCHAR_IGNORECASE` and has a unique constraint on `(owner_id, name)` (`db/h2/schema.sql:48,55`). The controller catches that violation and shows the same error (`PetController.java:128-133`).
+
+## 5. Searching owners for "davis"
+
+You get the **owners list page with both Davises**: Betty Davis (Sun Prairie) and Harold Davis (Windsor).
+- `OwnerController.processFindForm` trims the input and calls `findByLastNameStartingWith("davis", page)`, which is a `LIKE 'davis%'` query (`OwnerController.java:95-145`).
+- In H2, `owners.last_name` is `VARCHAR_IGNORECASE` (`schema.sql:39`), so the search ignores case. The README's "case-sensitive" claim is wrong here.
+- Two matches means it shows the list. With exactly one match it would redirect straight to that owner, and with none it would show "not found".
+- I didn't check the MySQL or Postgres schemas. Their behaviour depends on the column type and collation, so Postgres might be case-sensitive.
+
+## 6. Booking a visit, from form to database row
+
+1. **Form:** the page `pets/createOrUpdateVisitForm` sends a `POST` to `/owners/{ownerId}/pets/{petId}/visits/new` with `date` and `description`.
+2. **`VisitController.setAllowedFields`** (`@InitBinder`) stops the form from setting `id` or `*.id`.
+3. **`VisitController.loadPetWithVisit`** (`@ModelAttribute("visit")`) runs before the handler:
+   - `OwnerRepository.findById(ownerId)` loads the owner, and their pets and visits come with it.
+   - `Owner.getPet(petId)` finds the pet. If the owner or pet doesn't exist, it throws `IllegalArgumentException`.
+   - It puts `owner` and `pet` into the model.
+   - It creates `new Visit()` (the date defaults to tomorrow) and calls `Pet.addVisit(visit)`, so the new visit is already in the pet's `visits` set.
+   - `minVisitDate()` also adds today + 1 to the model.
+4. **Binding and validation:** Spring copies `date` and `description` onto that `Visit`. `@Valid` checks `@NotBlank` and `@Size(max=255)` on `description` (`Visit.java:43-45`). The `@ModelAttribute Owner owner` parameter gets the owner already in the model.
+5. **`VisitController.processNewVisitForm`** (`VisitController.java:98`):
+   - If the date isn't after today, it rejects it with `typeMismatch.visitDate`.
+   - If there are any errors, it shows the form again.
+6. **`Owner.addVisit(petId, visit)`** (`Owner.java:176`) checks its arguments, calls `getPet(petId)` and then `Pet.addVisit(visit)`. The visit is already in the set from step 3, so adding it again has no effect.
+7. **`OwnerRepository.save(owner)`** runs inside a transaction (Spring Data's `SimpleJpaRepository.save`). The owner already exists, so it calls `EntityManager.merge`. The merge passes from Owner to its pets to their visits through `cascade = ALL` (`Owner.java:67`, `Pet.java:56`).
+8. **Database write:** when the transaction commits, Hibernate does `INSERT INTO visits (visit_date, description, …)` and the database generates the id. Visits are linked to pets only from the pet's side, through `@JoinColumn(name="pet_id")`, so Hibernate fills in `pet_id` with that insert or a following `UPDATE visits SET pet_id=?`.
+9. **Response:** it adds the flash message "Your visit has been booked" and redirects to `/owners/{ownerId}`.
+
+The README's "Data entry", "Database configuration" and "Caching" sections are worth fixing so nobody else gets misled.

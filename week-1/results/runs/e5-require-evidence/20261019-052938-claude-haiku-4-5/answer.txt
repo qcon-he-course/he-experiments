@@ -1,0 +1,61 @@
+Perfect! Now I have all the information to answer your questions. Let me provide comprehensive answers:
+
+## 1. What is this project about? How do I get started?
+
+**VERIFIED** - This is **Spring PetClinic**, a sample Spring Boot application. From the README (line 16):
+
+> Spring Petclinic is a [Spring Boot](https://spring.io/guides/gs/spring-boot) application built using [Maven](https://spring.io/guides/gs/maven/) or [Gradle](https://spring.io/guides/gs/gradle/).
+
+To get started:
+```bash
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+./mvnw spring-boot:run
+```
+Then visit `http://localhost:8080/`
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**VERIFIED** - It uses **H2 in memory** (from AGENTS.md). This is decided by `src/main/resources/application.properties` which sets `database=h2`, and H2 is a runtime dependency in pom.xml.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**VERIFIED** - **No time limit—the cache never expires**. The README claims "refreshed every 10 minutes," but the code (CacheConfiguration.java:49-51) creates a cache with only statistics enabled and no TTL:
+```java
+return new MutableConfiguration<>().setStatisticsEnabled(true);
+```
+No expiry configuration is set. **The README is incorrect.**
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**No.** VERIFIED from `src/main/resources/db/h2/schema.sql`:
+- Line 48: Pet names use `VARCHAR_IGNORECASE(30)` 
+- Line 55: `unique_owner_pet_name UNIQUE (owner_id, name)`
+
+The unique constraint on `(owner_id, name)` prevents a second pet with the same name regardless of case.
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**You see all owners whose last name starts with "davis"—case-insensitive.**
+
+The search uses `OwnerRepository.findByLastNameStartingWith(lastname, pageable)` (OwnerController:140-145). Since the owner `last_name` column is `VARCHAR_IGNORECASE(30)` (schema.sql:39), the query matches "Davis", "DAVIS", "davis", etc. equally. So you'd see all Davis-family owners, displayed in whatever case they were originally entered.
+
+**The README (line 67) claims "Owner search is case-sensitive," but the code proves it's case-insensitive.**
+
+## 6. Trace: booking a visit, from form submission to database row
+
+**VERIFIED** - Here's the complete flow:
+
+| Step | Class & Method |
+|------|---|
+| 1. User submits form to `/owners/{ownerId}/pets/{petId}/visits/new` | HTTP POST |
+| 2. Spring calls `@ModelAttribute` method before handler | `VisitController.loadPetWithVisit()` (line 55-80) loads Owner, gets Pet, creates new Visit(), adds it to pet.visits, puts owner/pet/visit in model |
+| 3. Handler method processes the bound form data | `VisitController.processNewVisitForm()` (line 94-111) receives Owner (from model) and Visit (bound with form data) |
+| 4. Validation | Date check (line 97): ensures visit date is in the future |
+| 5. Add visit to pet | `Owner.addVisit(petId, visit)` (Owner.java:170-185) → gets Pet by ID → `Pet.addVisit(visit)` (Pet.java:80-82) → adds to pet.visits collection |
+| 6. Persist to database | `OwnerRepository.save(owner)` (VisitController:108) |
+| 7. JPA cascades the save | `@OneToMany(cascade = CascadeType.ALL)` on Owner.pets (Owner.java:67) cascades to Pet |
+| 8. JPA cascades pets→visits | `@OneToMany(cascade = CascadeType.ALL)` on Pet.visits (Pet.java:56) cascades the new Visit to visits table |
+| 9. Database write | Visit row inserted into `visits` table with the pet_id foreign key |
+
+Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>

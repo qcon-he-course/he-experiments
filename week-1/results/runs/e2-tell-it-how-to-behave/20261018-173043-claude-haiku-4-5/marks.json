@@ -1,0 +1,374 @@
+{
+  "label": "model-marked",
+  "run": "e2-tell-it-how-to-behave/runs/20261018-173043-claude-haiku-4-5",
+  "marked_at": "2026-10-19T13:01:02+00:00",
+  "judge": {
+    "requested": "claude-fable-5-1",
+    "model": "claude-fable-5-1",
+    "effort": "high",
+    "usage": [
+      {
+        "input_tokens": 2420,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 85796,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 4735,
+        "output_tokens_details": {
+          "thinking_tokens": 3276
+        },
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "speed": "standard"
+      },
+      {
+        "input_tokens": 2420,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 85796,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 5211,
+        "output_tokens_details": {
+          "thinking_tokens": 3741
+        },
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "speed": "standard"
+      }
+    ],
+    "passes": 2,
+    "cache": [
+      {
+        "written": 0,
+        "read": 85796,
+        "uncached": 2420
+      },
+      {
+        "written": 0,
+        "read": 85796,
+        "uncached": 2420
+      }
+    ]
+  },
+  "rubric_sha256": "017e1a0a65162a0e50fea8d4db61ce6b53a6b959a54cad2bc9c811e519fe9dcd",
+  "keys": "reference/grading-keys.json",
+  "clone": {
+    "path": "~/.cache/qcon-he/e6-key",
+    "commit": "b107a866c339e7473b17359d57eb643a7cd39442",
+    "warning": null
+  },
+  "code": {
+    "files": 73,
+    "sha256": "aa677e5db25b44ea38ba8b5ab924bff650ca5f77c37858b01668c0625d7f05a5"
+  },
+  "answer_from": "transcript, every reply",
+  "facts": {
+    "files_read": [
+      "README.md",
+      "pom.xml",
+      "src/main/resources/application.properties",
+      "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java",
+      "src/main/resources/application-postgres.properties",
+      "src/main/java/org/springframework/samples/petclinic/vet",
+      "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java",
+      "src/main/java/org/springframework/samples/petclinic/vet/VetController.java",
+      ".env",
+      "src/main/java/org/springframework/samples/petclinic/owner/Pet.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/Owner.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/PetController.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/PetValidator.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/OwnerController.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/OwnerRepository.java",
+      "src/main/resources/db/h2/schema.sql",
+      "src/main/resources/db/h2/data.sql",
+      "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java",
+      "src/main/java/org/springframework/samples/petclinic/owner/Visit.java",
+      "src/main/java/org/springframework/samples/petclinic/model",
+      "src/main/java/org/springframework/samples/petclinic/PetClinicApplication.java",
+      "src/main/resources/application-mysql.properties"
+    ],
+    "files_mcp": [],
+    "search_hits": {},
+    "readme_opened": true,
+    "citations": [
+      {
+        "cited": "/work/src/main/resources/application.properties",
+        "resolved": "src/main/resources/application.properties",
+        "candidates": [],
+        "spans": [
+          [
+            2,
+            2
+          ]
+        ],
+        "lines": {
+          "2": "database=h2"
+        }
+      },
+      {
+        "cited": "CacheConfiguration.java",
+        "resolved": "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java",
+        "candidates": [],
+        "spans": [
+          [
+            49,
+            49
+          ]
+        ],
+        "lines": {
+          "49": "\tprivate javax.cache.configuration.Configuration<Object, Object> cacheConfiguration() {"
+        }
+      },
+      {
+        "cited": "Pet.java",
+        "resolved": "src/main/java/org/springframework/samples/petclinic/owner/Pet.java",
+        "candidates": [],
+        "spans": [],
+        "lines": {}
+      }
+    ]
+  },
+  "flags": [
+    "q6: judge confidence medium"
+  ],
+  "status": "marked",
+  "questions": {
+    "q1": {
+      "verdict": "right",
+      "took_rigged_claim": false,
+      "source": "readme",
+      "reason_quote": "./mvnw spring-boot:run",
+      "note": "Describes the application correctly and gives a working start command (./mvnw spring-boot:run) with no step that starts a database first.",
+      "cites_file_line": false,
+      "citations_agree": "none",
+      "label": "none",
+      "flags_readme": false,
+      "confidence": "high",
+      "outcome": "right_checked",
+      "checked": true,
+      "checked_via": {
+        "src/main/resources/application.properties": [
+          "read"
+        ],
+        "README.md": [
+          "read"
+        ]
+      },
+      "second_pass": {
+        "verdict": "right",
+        "outcome": "right_checked",
+        "confidence": "high"
+      }
+    },
+    "q2": {
+      "verdict": "partial",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "The decision is made by the `database` property in `/work/src/main/resources/application.properties:2`",
+      "note": "Says H2 because database=h2 but says nothing about no datasource URL being set, the embedded default, or the H2 runtime dependency, which the marking rule requires for right.",
+      "cites_file_line": true,
+      "citations_agree": "yes",
+      "label": "none",
+      "flags_readme": true,
+      "confidence": "high",
+      "outcome": "wrong_other",
+      "checked": true,
+      "checked_via": {
+        "src/main/resources/application.properties": [
+          "read"
+        ]
+      },
+      "second_pass": {
+        "verdict": "partial",
+        "outcome": "wrong_other",
+        "confidence": "high"
+      }
+    },
+    "q3": {
+      "verdict": "wrong",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "the configuration relies on unspecified defaults",
+      "note": "Gives no lifetime at all (only 'unspecified defaults') and points to CacheConfiguration's MutableConfiguration, which is never applied since the cache manager is Caffeine's; no outcome and wrong reason.",
+      "cites_file_line": true,
+      "citations_agree": "partly",
+      "label": "none",
+      "flags_readme": true,
+      "confidence": "high",
+      "outcome": "wrong_other",
+      "checked": true,
+      "checked_via": {
+        "pom.xml": [
+          "read"
+        ],
+        "src/main/java/org/springframework/samples/petclinic/vet/VetRepository.java": [
+          "read"
+        ]
+      },
+      "second_pass": {
+        "verdict": "wrong",
+        "outcome": "wrong_other",
+        "confidence": "medium"
+      }
+    },
+    "q4": {
+      "verdict": "right",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "`Owner.getPet(String name, boolean ignoreNew):150` which calls `compName.equalsIgnoreCase(name)`",
+      "note": "Says no and gives both deciding mechanisms: the controller's equalsIgnoreCase duplicate check and the VARCHAR_IGNORECASE unique constraint, with accurate citations.",
+      "cites_file_line": true,
+      "citations_agree": "yes",
+      "label": "none",
+      "flags_readme": false,
+      "confidence": "high",
+      "outcome": "right_checked",
+      "checked": true,
+      "checked_via": {
+        "src/main/java/org/springframework/samples/petclinic/owner/PetController.java": [
+          "read"
+        ],
+        "src/main/java/org/springframework/samples/petclinic/owner/Owner.java": [
+          "read"
+        ]
+      },
+      "second_pass": {
+        "verdict": "right",
+        "outcome": "right_checked",
+        "confidence": "high"
+      }
+    },
+    "q5": {
+      "verdict": "right",
+      "took_rigged_claim": false,
+      "source": "code",
+      "reason_quote": "the H2 schema (line 39) defines owner last names as `VARCHAR_IGNORECASE(30)`",
+      "note": "Says both Betty and Harold Davis are found because last_name is VARCHAR_IGNORECASE in the H2 schema, which is the deciding reason.",
+      "cites_file_line": true,
+      "citations_agree": "yes",
+      "label": "none",
+      "flags_readme": false,
+      "confidence": "high",
+      "outcome": "right_checked",
+      "checked": true,
+      "checked_via": {
+        "src/main/resources/db/h2/schema.sql": [
+          "read"
+        ],
+        "src/main/java/org/springframework/samples/petclinic/owner/OwnerRepository.java": [
+          "read"
+        ]
+      },
+      "second_pass": {
+        "verdict": "right",
+        "outcome": "right_checked",
+        "confidence": "high"
+      }
+    }
+  },
+  "q6": {
+    "note": "Five of six steps are stated with the right classes and methods, including the framework steps (Spring calling the @ModelAttribute method before the handler, and the save cascading to visits); the validation step mentions only the date check, and the redirect with the 'Your visit has been booked' message is omitted.",
+    "confidence": "medium",
+    "steps": {
+      "1": {
+        "found": true,
+        "quote": "`VisitController.processNewVisitForm:98` (POST `/owners/{ownerId}/pets/{petId}/visits/new`)",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ]
+        }
+      },
+      "2": {
+        "found": true,
+        "quote": "**Before controller runs** → `VisitController.loadPetWithVisit:64` (`@ModelAttribute`)",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ]
+        }
+      },
+      "3": {
+        "found": true,
+        "quote": "**Validation** → `VisitController.processNewVisitForm:100-102`",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Visit.java": [
+            "read"
+          ]
+        }
+      },
+      "4": {
+        "found": true,
+        "quote": "Calls `Owner.addVisit(Integer petId, Visit visit):176`",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Owner.java": [
+            "read"
+          ]
+        }
+      },
+      "5": {
+        "found": true,
+        "quote": "Cascades to save all visits due to `Pet.visits` with `cascade = CascadeType.ALL` (Pet.java line 56)",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Owner.java": [
+            "read"
+          ],
+          "src/main/java/org/springframework/samples/petclinic/owner/Pet.java": [
+            "read"
+          ]
+        }
+      },
+      "6": {
+        "found": false,
+        "quote": "",
+        "checked": true,
+        "checked_via": {
+          "src/main/java/org/springframework/samples/petclinic/owner/VisitController.java": [
+            "read"
+          ]
+        }
+      }
+    },
+    "steps_found": 5,
+    "steps_found_and_checked": 5
+  },
+  "unsupported_claims": [
+    {
+      "quote": "the configuration relies on unspecified defaults",
+      "kind": "contradicted",
+      "evidence": "src/main/java/org/springframework/samples/petclinic/system/CacheConfiguration.java:35-37; pom.xml:81-85",
+      "why": "The key states the effective cache is Spring Boot's Caffeine cache manager (unbounded, no expiry) because the pom has no JCache provider, so the JCacheManagerCustomizer's MutableConfiguration is never applied and the lifetime is not an unspecified default but until restart."
+    }
+  ],
+  "summary": {
+    "right": 3,
+    "right_checked": 3,
+    "right_unchecked": 0,
+    "wrong_rigged": 0,
+    "wrong_other": 2,
+    "q6_steps_found": 5,
+    "q6_steps_checked": 5,
+    "unsupported_claims": 1,
+    "contradicted": 1,
+    "not_found": 0,
+    "flags_readme": 2
+  }
+}

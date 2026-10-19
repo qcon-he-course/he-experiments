@@ -1,0 +1,76 @@
+Now I have all the information needed. Here are the answers:
+
+## 1. What is this project about? How do I get started?
+
+**VERIFIED** from README.md
+
+PetClinic is a Spring Boot sample application demonstrating a pet clinic management system. It manages owners, their pets, veterinarians, and visit bookings.
+
+**To get started:**
+- Clone the repository: `git clone https://github.com/spring-projects/spring-petclinic.git`
+- Run with Maven: `./mvnw spring-boot:run` or with Gradle: `./gradlew bootRun`
+- Access at `http://localhost:8080`
+
+---
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**VERIFIED** from application.properties:2 and AGENTS.md
+
+It uses **H2 in-memory database**. The `application.properties` file sets `database=h2` on line 2, which points to the H2 schema and data files. H2 is included as a runtime dependency in pom.xml. 
+
+The README incorrectly states PostgreSQL is the default—the code decides here, not the documentation.
+
+---
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**VERIFIED** from VetRepository and CacheConfiguration
+
+**No expiry—it's cached indefinitely.** The `VetRepository.findAll()` methods are annotated with `@Cacheable("vets")`. The `CacheConfiguration` creates the cache with only statistics enabled (`setStatisticsEnabled(true)`) and no expiry policy. The README incorrectly claims "refreshed every 10 minutes"—the code has no expiry configuration.
+
+---
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**VERIFIED** from db/h2/schema.sql:48,55 and data.sql (Jean Coleman is owner 6, and she has a pet 'Max')
+
+**No, she cannot.** In H2, the pet name column is `VARCHAR_IGNORECASE(30)`, meaning names are case-insensitive. The unique constraint is on `(owner_id, name)`. Since "Max" and "max" are treated as identical in case-insensitive comparison, adding either would violate the unique constraint. The README correctly notes "Pet names are case-sensitive" but this applies only to other databases—in the default H2, they're case-insensitive.
+
+---
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**VERIFIED** from OwnerController.processFindForm and findByLastNameStartingWith
+
+You see **both Davis owners: Betty Davis and Harold Davis.** 
+
+The search uses `findByLastNameStartingWith(lastName)`, a Spring Data method on the `last_name` column, which is `VARCHAR_IGNORECASE(30)` in H2. So searching "davis" finds all names starting with "davis" case-insensitively. The README's claim that search is "case-sensitive" is incorrect for the default H2 database.
+
+---
+
+## 6. Trace what happens when an owner books a visit for a pet
+
+**VERIFIED** from VisitController and Owner/Pet entities
+
+Here's the complete flow from form submission to database:
+
+1. **VisitController.loadPetWithVisit()** (line 59-82, called before the POST handler)
+   - Loads the owner from `OwnerRepository.findById(ownerId)`
+   - Retrieves the pet from `owner.getPet(petId)`
+   - Creates a new `Visit` object
+   - Adds it to the pet's visits: `pet.addVisit(visit)` (Pet line 81)
+
+2. **VisitController.processNewVisitForm()** (line 99-113, handles POST)
+   - Validates visit date: if not after today, rejects the form (line 102-104)
+   - Calls `owner.addVisit(petId, visit)` (Owner line 178)
+   - Which calls `pet.addVisit(visit)` again (Pet line 81)
+
+3. **VisitController.processNewVisitForm()** (line 110)
+   - Calls `owners.save(owner)` to persist
+
+4. **JPA persistence** (triggered by save)
+   - Owner entity is saved
+   - Cascades to `Pet` entities via `@OneToMany(cascade = CascadeType.ALL)` (Owner line 67)
+   - Cascades to `Visit` entities via `@OneToMany(cascade = CascadeType.ALL)` (Pet line 56)
+   - All three rows are inserted: owner, pet, and visit

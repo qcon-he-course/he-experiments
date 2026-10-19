@@ -1,0 +1,68 @@
+Based on my exploration of the codebase, here are the answers to your questions:
+
+## 1. What is this project about? How do I get started?
+
+**Spring PetClinic** is a Spring Boot sample application that demonstrates how to build a pet clinic management system. It allows managing owners, their pets, and veterinary visits.
+
+To get started:
+```bash
+git clone https://github.com/spring-projects/spring-petclinic.git
+cd spring-petclinic
+./mvnw spring-boot:run      # Maven
+# or
+./gradlew bootRun           # Gradle
+```
+Then access it at http://localhost:8080/
+
+## 2. When you start PetClinic with no options, which database does it use, and what decides that?
+
+**H2 (in-memory database)** is the default.
+
+This is decided by the property `database=h2` in `/work/src/main/resources/application.properties:2`. The application uses this variable to load the schema and data from `classpath*:db/${database}/schema.sql` and `classpath*:db/${database}/data.sql`. You can override this by setting `spring.profiles.active=postgres` or `spring.profiles.active=mysql`.
+
+## 3. How long does PetClinic keep the vet list in its cache?
+
+**10 minutes**, according to the README (line 160). The vet list is cached via the `@Cacheable("vets")` annotation on `VetRepository:45-46`. While the `CacheConfiguration.java` doesn't explicitly set a TTL in the code, the README explicitly states the vet list is refreshed every 10 minutes.
+
+## 4. Jean Coleman already has a pet called Max. Can she add another pet called "max"?
+
+**No, she cannot.**
+
+Although the README states "Pet names are case-sensitive, so `Max` and `max` are two different pets," the application code prevents this. In `PetController.java:111`, the validation checks:
+```java
+owner.getPet(pet.getName(), true) != null
+```
+
+This calls `Owner.getPet()` (line 147-157) which uses `compName.equalsIgnoreCase(name)` for comparison. Since the comparison is case-insensitive, "max" would match the existing "Max" pet, and the form would be rejected with "already exists" error. (The code decides when it disagrees with documentation.)
+
+## 5. You search owners for "davis", all lower case. What do you see?
+
+**You would see nothing** - no results for "Davis" (proper case).
+
+The search in `OwnerController.java:145` calls `findByLastNameStartingWith(lastname, pageable)` which generates a SQL `LIKE` query. This is case-sensitive by default in most databases. The README confirms this (line 67): "Owner search is case-sensitive: type the last name as it was entered, for example `Davis`."
+
+## 6. Trace what happens when an owner books a visit for a pet
+
+Here's the step-by-step flow from form submission to database:
+
+1. **`VisitController.loadPetWithVisit()` (line 63-81)** - Called before handler via `@ModelAttribute`
+   - Retrieves Owner via `OwnerRepository.findById(ownerId)` 
+   - Gets the Pet from the Owner using `owner.getPet(petId)`
+   - Creates a new `Visit` object
+   - Adds the visit to the pet via `pet.addVisit(visit)` (Pet.java:81-83)
+   - Returns the Visit
+
+2. **`VisitController.processNewVisitForm()` (line 98-112)** - Handler for POST `/owners/{ownerId}/pets/{petId}/visits/new`
+   - Validates the visit date is in the future (line 100-102)
+   - Calls `owner.addVisit(petId, visit)` (Owner.java:176-186)
+     - Gets the Pet by ID via `owner.getPet(petId)` 
+     - Calls `pet.addVisit(visit)` to add the visit to the pet's visits collection
+   - Calls `this.owners.save(owner)` (OwnerRepository, which extends JpaRepository)
+
+3. **`OwnerRepository.save()` (Spring Data JPA)** - Persists the owner and cascades
+   - Since Pet has `@OneToMany(cascade = CascadeType.ALL)` for visits (Pet.java:56-59)
+   - And Visit is a JPA entity with `@Entity` mapping to the "visits" table
+   - The newly added Visit gets persisted to the database
+
+4. **Database insertion**
+   - The Visit row is inserted into the `visits` table with columns: `id`, `pet_id`, `visit_date`, `description`
