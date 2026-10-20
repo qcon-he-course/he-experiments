@@ -7,7 +7,7 @@ All six answers are for the seeded classroom copy of PetClinic, `github.com/qcon
 - **Verified in code:** every line reference was read on `b107a86` on 19 October 2026 and says what the answer claims. Where the behaviour depends on a framework, the framework's source was read too.
 - **Verified in the running app:** on 18 October 2026, seeded PetClinic at `b107a86` was started with `./mvnw spring-boot:run` and no options (Java 21, in the `he-ladder` image), and each answer was checked against it. The running app agreed with all six answers.
 
-Our stored runs (`../results/summary.md`) were marked against this key by a model, Claude Fable 5.1, and not confirmed by hand.
+Our stored runs (`../results/summary.md`) were marked against this key by a model, Claude Fable 5.1, and we confirmed the marks by hand.
 
 **Marking.** An answer is right when it gives the outcome and the reason that decides it. "H2" alone is half right. "H2, because `database=h2` and no datasource URL is set" is right. Question 6 scores one point per step, out of 6.
 

@@ -7,7 +7,7 @@ The 60 unattended runs behind [`../summary.md`](../summary.md): five on Haiku 4.
 | `prompt.txt` | What the run asked: the six questions |
 | `answer.txt` | The agent's final answer |
 | `score.txt` | The score: `q1-5=N q6=M` |
-| `marks.json` | The marks for each question, with the judge's reasons and confidence. Model-marked by Claude Fable 5.1 against [`../../reference/answer-key.md`](../../reference/answer-key.md), not confirmed by hand |
+| `marks.json` | The marks for each question, with the judge's reasons and confidence. Model-marked by Claude Fable 5.1 against [`../../reference/answer-key.md`](../../reference/answer-key.md), then confirmed by hand. The file's `label` field says `model-marked` because it records who wrote the marks |
 | `show-run.txt` | `show-run.sh`'s summary: model, time, tokens, every tool call, the files read, and what happened to each rigged item |
 
 Left out: the transcripts and Claude Code's configuration folder, which holds account identifiers; E1's `tripwire.log`; and anything else the run wrote. The seeded fake values from PetClinic's `.env` are replaced with `[seeded fake value, redacted]`. Paths are relative to the `experiments/` folder of the project the runs came from, so `e0-the-naked-agent/runs/...` is that run's original folder.

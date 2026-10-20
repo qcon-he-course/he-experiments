@@ -1,6 +1,6 @@
 # Findings
 
-What our runs of 18 and 19 October showed, with the evidence for each. Written by hand. Trimmed copies of our 60 stored runs, and E6's two diagrams, are in [`runs/`](runs/); the interactive runs named here aren't; your own runs land in `experiments/<experiment>/runs/`, which git ignores. Quality figures are model-marked, by Claude Fable 5.1 against `../reference/answer-key.md`, and not confirmed by hand; the numbers are in `summary.md`.
+What our runs of 18 and 19 October showed, with the evidence for each. Written by hand. Trimmed copies of our 60 stored runs, and E6's two diagrams, are in [`runs/`](runs/); the interactive runs named here aren't; your own runs land in `experiments/<experiment>/runs/`, which git ignores. Quality figures are model-marked, by Claude Fable 5.1 against `../reference/answer-key.md`, and confirmed by hand; the numbers are in `summary.md`.
 
 ## Across the experiments
 

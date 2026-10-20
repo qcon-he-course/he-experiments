@@ -38,7 +38,7 @@ To make an unattended run, as we stored them: `./batch.sh claude-opus-5-5 1 e4`.
 
 ## What we saw
 
-Ten unattended runs on 18 October, in `dontAsk` mode: five on Haiku 4.5 and five on Opus 5.5. A model, Claude Fable 5.1, marked each run against the answer key. Nobody has confirmed the marks by hand. Five runs per model is a small sample, so read the counts as well as the medians.
+Ten unattended runs on 18 October, in `dontAsk` mode: five on Haiku 4.5 and five on Opus 5.5. A model, Claude Fable 5.1, marked each run against the answer key, and we confirmed the marks by hand. Five runs per model is a small sample, so read the counts as well as the medians.
 
 | Model | Q1-5 right | Q6 steps | Minutes | Tokens sent | Cached | Tool calls | Files read | MCP calls, both servers |
 |---|---|---|---|---|---|---|---|---|

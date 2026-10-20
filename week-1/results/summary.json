@@ -1,6 +1,6 @@
 {
  "generated": "2026-10-19T13:18:14+00:00",
- "label": "model-marked not confirmed by hand",
+ "label": "model-marked, confirmed by hand",
  "judges": [
   "claude-fable-5-1"
  ],

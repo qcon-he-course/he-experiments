@@ -47,7 +47,7 @@ Approve read-only commands. Deny anything that writes, builds or reaches the net
 
 ## What we saw
 
-Five unattended runs on Haiku 4.5 and five on Opus 5.5, on 19 October, in `dontAsk` mode. A model (Claude Fable 5.1) marked each run against the answer key; the marks are not confirmed by hand. Five runs per model is a small sample, so read the counts.
+Five unattended runs on Haiku 4.5 and five on Opus 5.5, on 19 October, in `dontAsk` mode. A model (Claude Fable 5.1) marked each run against the answer key, and we confirmed the marks by hand. Five runs per model is a small sample, so read the counts.
 
 | Model | Q1-5 right (median) | Q6 steps (median) | Minutes | Tokens sent | Cached | Tool calls | Files read | MCP calls |
 |---|---|---|---|---|---|---|---|---|

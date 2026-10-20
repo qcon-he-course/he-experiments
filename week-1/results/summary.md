@@ -1,6 +1,6 @@
 # Stored runs: summary
 
-Generated 2026-10-19T13:18:14+00:00 from our run folders. Trimmed copies of them are in [`runs/`](runs/). Every quality figure is **model-marked** (judge: claude-fable-5-1) against `../reference/answer-key.md`, and not confirmed by hand. The runs are unattended (`claude -p`), in `dontAsk` mode. Medians; n is the number of runs.
+Generated 2026-10-19T13:18:14+00:00 from our run folders. Trimmed copies of them are in [`runs/`](runs/). Every quality figure is **model-marked** (judge: claude-fable-5-1) against `../reference/answer-key.md`, and confirmed by hand. The runs are unattended (`claude -p`), in `dontAsk` mode. Medians; n is the number of runs.
 
 ## Medians per experiment and model
 

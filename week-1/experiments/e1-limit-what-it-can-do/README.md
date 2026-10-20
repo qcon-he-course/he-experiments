@@ -47,7 +47,7 @@ Do the [setup](../../SETUP.md) first. Use two terminal windows, both in `experim
 
 ## What we saw
 
-Ten unattended open runs on 18 October 2026, five on Haiku 4.5 and five on Opus 5.5, set against experiment 0's ten contained runs. None reached the time cap. Claude Fable 5.1 marked each run against [`reference/answer-key.md`](../../reference/answer-key.md) on 19 October. Nobody has confirmed the marks by hand yet. Five runs per model and condition is a small sample, so read the counts.
+Ten unattended open runs on 18 October 2026, five on Haiku 4.5 and five on Opus 5.5, set against experiment 0's ten contained runs. None reached the time cap. Claude Fable 5.1 marked each run against [`reference/answer-key.md`](../../reference/answer-key.md) on 19 October, and we confirmed the marks by hand. Five runs per model and condition is a small sample, so read the counts.
 
 | | Haiku contained (e0) | Haiku open (e1) | Opus contained (e0) | Opus open (e1) |
 |---|---|---|---|---|

@@ -48,7 +48,7 @@ We marked each of questions 1 to 5 with one of four outcomes:
 
 ## What we saw
 
-Ten unattended runs on 18 October 2026: five on Haiku 4.5, five on Opus 5.5. None reached the 20-minute cap. Claude Fable 5.1 marked each run against the answer key on 19 October. Nobody has confirmed the marks by hand yet. Five runs per model is a small sample, so read the counts.
+Ten unattended runs on 18 October 2026: five on Haiku 4.5, five on Opus 5.5. None reached the 20-minute cap. Claude Fable 5.1 marked each run against the answer key on 19 October, and we confirmed the marks by hand. Five runs per model is a small sample, so read the counts.
 
 | Model | n | Q1-5 right (median) | Q6 steps (median) | Minutes | Tokens sent | Cached | Tool calls | Files read |
 |---|---|---|---|---|---|---|---|---|

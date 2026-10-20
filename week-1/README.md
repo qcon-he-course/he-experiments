@@ -37,7 +37,7 @@ On macOS, `pbcopy < ../questions.txt` puts the questions on the clipboard before
 - [results/findings.md](results/findings.md): what the runs showed, by experiment, with the evidence for each finding.
 - [results/runs/](results/runs/): each of our 60 stored runs, trimmed: the prompt, the final answer, the marks and `show-run.sh`'s summary. Also E6's two diagrams.
 
-A model (Claude Fable 5.1) marked every stored run against [reference/answer-key.md](reference/answer-key.md). Nobody has confirmed those marks by hand, so read them as model-marked.
+A model (Claude Fable 5.1) marked every stored run against [reference/answer-key.md](reference/answer-key.md). We then confirmed every mark by hand.
 
 ## Score your own run
 
